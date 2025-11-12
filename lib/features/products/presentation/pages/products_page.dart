@@ -7,11 +7,13 @@ import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/badge_chip.dart';
 import '../../../../core/widgets/section_header.dart';
 import '../../domain/entities/product.dart';
+import 'add_product_page.dart';
+import 'product_details_page.dart';
 
 class ProductsPage extends StatefulWidget {
-  const ProductsPage({super.key, required this.onAddProduct});
+  const ProductsPage({super.key, this.onAddProduct});
 
-  final VoidCallback onAddProduct;
+  final VoidCallback? onAddProduct;
 
   @override
   State<ProductsPage> createState() => _ProductsPageState();
@@ -21,6 +23,31 @@ class _ProductsPageState extends State<ProductsPage> {
   final _searchController = TextEditingController();
   String _selectedCategory = 'الكل';
   ProductStatus? _selectedStatus;
+
+  void _openProductDetails(Product product) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: ProductDetailsPage(product: product),
+        ),
+      ),
+    );
+  }
+
+  void _openProductForm({Product? product}) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (routeContext) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: ProductFormPage(
+            initialProduct: product,
+            onBack: () => Navigator.of(routeContext).pop(),
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   void dispose() {
@@ -51,7 +78,14 @@ class _ProductsPageState extends State<ProductsPage> {
             title: 'إدارة المنتجات',
             subtitle: 'إدارة وتنظيم منتجات متجرك',
             trailing: FilledButton.icon(
-              onPressed: widget.onAddProduct,
+              onPressed: () {
+                final callback = widget.onAddProduct;
+                if (callback != null) {
+                  callback();
+                } else {
+                  _openProductForm();
+                }
+              },
               icon: const Icon(Icons.add),
               label: const Text('إضافة منتج'),
             ),
@@ -100,8 +134,11 @@ class _ProductsPageState extends State<ProductsPage> {
           for (final product in filtered)
             Padding(
               padding: const EdgeInsets.only(bottom: AppSpacing.md),
-              child: AppCard(
-                child: Row(
+              child: InkWell(
+                onTap: () => _openProductDetails(product),
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+                child: AppCard(
+                  child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     ClipRRect(
@@ -126,7 +163,16 @@ class _ProductsPageState extends State<ProductsPage> {
                                   style: const TextStyle(fontWeight: FontWeight.w700),
                                 ),
                               ),
-                              _ProductMenu(product: product),
+                              _ProductMenu(
+                                product: product,
+                                onView: () => _openProductDetails(product),
+                                onEdit: () => _openProductForm(product: product),
+                                onDelete: () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('تمت إزالة ${product.name} (محاكاة).')),
+                                  );
+                                },
+                              ),
                             ],
                           ),
                           const SizedBox(height: AppSpacing.xs),
@@ -179,7 +225,8 @@ class _ProductsPageState extends State<ProductsPage> {
                     ),
                   ],
                 ),
-              ),
+                  ),
+                ),
             ),
         ],
       ),
@@ -233,17 +280,25 @@ class _FilterChip<T> extends StatelessWidget {
 }
 
 class _ProductMenu extends StatelessWidget {
-  const _ProductMenu({required this.product});
+  const _ProductMenu({
+    required this.product,
+    required this.onView,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   final Product product;
+  final VoidCallback onView;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
     return PopupMenuButton<int>(
       icon: const Icon(Icons.more_horiz, color: Colors.white54),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
-      itemBuilder: (context) => [
-        const PopupMenuItem(
+      itemBuilder: (context) => const [
+        PopupMenuItem(
           value: 1,
           child: Row(
             children: [
@@ -253,7 +308,7 @@ class _ProductMenu extends StatelessWidget {
             ],
           ),
         ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 2,
           child: Row(
             children: [
@@ -263,7 +318,7 @@ class _ProductMenu extends StatelessWidget {
             ],
           ),
         ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 3,
           child: Row(
             children: [
@@ -275,9 +330,17 @@ class _ProductMenu extends StatelessWidget {
         ),
       ],
       onSelected: (value) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('قريباً - خيار ($value) للمنتج ${product.name}')),
-        );
+        switch (value) {
+          case 1:
+            onView();
+            break;
+          case 2:
+            onEdit();
+            break;
+          case 3:
+            onDelete();
+            break;
+        }
       },
     );
   }

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' as intl;
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_spacing.dart';
@@ -9,6 +9,8 @@ import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/badge_chip.dart';
 import '../../../../core/widgets/section_header.dart';
 import '../../domain/entities/order.dart';
+import 'add_order_page.dart';
+import 'order_details_page.dart';
 
 class OrdersPage extends StatefulWidget {
   const OrdersPage({super.key});
@@ -20,6 +22,88 @@ class OrdersPage extends StatefulWidget {
 class _OrdersPageState extends State<OrdersPage> {
   final List<Order> _orders = data.recentOrders;
   Order? _selectedOrder;
+
+  void _openAddOrder() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (routeContext) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: AddOrderPage(
+            onBack: () => Navigator.of(routeContext).pop(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openOrderDetails(Order order) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: OrderDetailsPage(order: order),
+        ),
+      ),
+    );
+  }
+
+  void _showStatusSheet(Order order) async {
+    final newStatus = await showModalBottomSheet<OrderStatus>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: AppCard(
+            margin: const EdgeInsets.all(AppSpacing.lg),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SectionHeader(
+                  title: 'تحديث حالة الطلب',
+                  subtitle: 'اختر الحالة الجديدة للطلب',
+                ),
+                for (final status in OrderStatus.values)
+                  RadioListTile<OrderStatus>(
+                    value: status,
+                    groupValue: order.status,
+                    onChanged: (value) => Navigator.of(ctx).pop(value),
+                    title: Text(_statusLabel(status)),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (newStatus != null) {
+      if (!mounted) return;
+      setState(() {
+        final index = _orders.indexOf(order);
+        if (index != -1) {
+          final existing = _orders[index];
+          _orders[index] = Order(
+            id: existing.id,
+            customerName: existing.customerName,
+            total: existing.total,
+            status: newStatus,
+            date: existing.date,
+            items: existing.items,
+            paymentStatus: existing.paymentStatus,
+            shippingStatus: existing.shippingStatus,
+          );
+          if (_selectedOrder?.id == existing.id) {
+            _selectedOrder = _orders[index];
+          }
+        }
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تم تحديث حالة الطلب ${order.id}.')),
+      );
+    }
+  }
 
   @override
   void initState() {
@@ -43,11 +127,7 @@ class _OrdersPageState extends State<OrdersPage> {
                 title: 'الطلبات',
                 subtitle: 'متابعة الطلبات الأخيرة وإدارتها',
                 trailing: FilledButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('نموذج إضافة طلب جديد قيد التطوير')),
-                    );
-                  },
+              onPressed: _openAddOrder,
                   icon: const Icon(Icons.add),
                   label: const Text('طلب جديد'),
                 ),
@@ -85,7 +165,13 @@ class _OrdersPageState extends State<OrdersPage> {
           ),
           for (final order in _orders)
             GestureDetector(
-              onTap: () => setState(() => _selectedOrder = order),
+              onTap: () {
+                setState(() => _selectedOrder = order);
+                final isWide = MediaQuery.of(context).size.width > 840;
+                if (!isWide) {
+                  _openOrderDetails(order);
+                }
+              },
               child: Container(
                 margin: const EdgeInsets.only(bottom: AppSpacing.sm),
                 padding: const EdgeInsets.all(AppSpacing.md),
@@ -137,7 +223,7 @@ class _OrdersPageState extends State<OrdersPage> {
                         const Icon(Icons.calendar_today, size: 14, color: AppColors.mutedForeground),
                         const SizedBox(width: AppSpacing.xs),
                         Text(
-                          DateFormat('EEE d MMM', 'ar').format(order.date),
+                          intl.DateFormat('EEE d MMM', 'ar').format(order.date),
                           style: const TextStyle(color: AppColors.mutedForeground, fontSize: 12),
                         ),
                         const Spacer(),
@@ -241,11 +327,7 @@ class _OrdersPageState extends State<OrdersPage> {
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: FilledButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('تم تحديث حالة الطلب بنجاح (محاكاة)')),
-                    );
-                  },
+                  onPressed: () => _showStatusSheet(order),
                   icon: const Icon(Icons.task_alt),
                   label: const Text('تحديث الحالة'),
                 ),

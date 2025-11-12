@@ -8,7 +8,7 @@ class AppTheme {
   const AppTheme._();
 
   static ThemeData get dark {
-    final baseText = GoogleFonts.kufamTextTheme(
+    final baseText = GoogleFonts.cairoTextTheme(
       const TextTheme(),
     ).apply(
       bodyColor: Colors.white,
@@ -18,7 +18,7 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      fontFamily: GoogleFonts.kufam().fontFamily,
+      fontFamily: GoogleFonts.cairo().fontFamily,
       scaffoldBackgroundColor: AppColors.background,
       colorScheme: const ColorScheme.dark(
         surface: AppColors.surface,
@@ -28,10 +28,10 @@ class AppTheme {
         onPrimary: AppColors.primaryForeground,
       ),
       textTheme: baseText,
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        titleTextStyle: TextStyle(
+        titleTextStyle: baseText.titleMedium?.copyWith(
           fontSize: 18,
           fontWeight: FontWeight.w600,
           color: Colors.white,

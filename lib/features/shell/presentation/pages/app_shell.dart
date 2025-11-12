@@ -83,7 +83,7 @@ class _AuthenticatedHome extends StatelessWidget {
               MaterialPageRoute(
                 builder: (routeContext) => Directionality(
                   textDirection: TextDirection.rtl,
-                  child: AddProductPage(
+                  child: ProductFormPage(
                     onBack: () => Navigator.of(routeContext).pop(),
                   ),
                 ),
@@ -222,7 +222,6 @@ class _Header extends StatelessWidget {
       child: AppCard(
         padding: const EdgeInsets.all(AppSpacing.lg),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
               height: 48,
@@ -234,11 +233,11 @@ class _Header extends StatelessWidget {
               child: const Icon(Icons.storefront, color: AppColors.primary),
             ),
             const SizedBox(width: AppSpacing.md),
-            Expanded(
+            const Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
-                children: const [
+                children: [
                   Text(
                     AppStrings.appName,
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
@@ -251,64 +250,119 @@ class _Header extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: AppSpacing.md),
-            Flexible(
-              child: Wrap(
-                spacing: AppSpacing.sm,
-                runSpacing: AppSpacing.sm,
-                alignment: WrapAlignment.end,
-                crossAxisAlignment: WrapCrossAlignment.center,
+            IconButton(
+              splashRadius: 22,
+              tooltip: 'الإشعارات',
+              onPressed: onNavigateToNotifications,
+              icon: const Stack(
+                clipBehavior: Clip.none,
                 children: [
-                  IconButton(
-                    splashRadius: 22,
-                    onPressed: onNavigateToNotifications,
-                    icon: const Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Icon(Icons.notifications_outlined),
-                        Positioned(
-                          right: -2,
-                          top: -2,
-                          child: CircleAvatar(
-                            backgroundColor: Colors.redAccent,
-                            radius: 8,
-                            child: Text(
-                              '3',
-                              style: TextStyle(fontSize: 10, color: Colors.white),
-                            ),
-                          ),
-                        ),
-                      ],
+                  Icon(Icons.notifications_outlined),
+                  Positioned(
+                    right: -2,
+                    top: -2,
+                    child: CircleAvatar(
+                      backgroundColor: Colors.redAccent,
+                      radius: 8,
+                      child: Text(
+                        '3',
+                        style: TextStyle(fontSize: 10, color: Colors.white),
+                      ),
                     ),
                   ),
-                  IconButton(
-                    splashRadius: 22,
-                    onPressed: onNavigateToShipping,
-                    icon: const Icon(Icons.local_shipping_outlined),
-                  ),
-                  IconButton(
-                    splashRadius: 22,
-                    onPressed: onNavigateToCoupons,
-                    icon: const Icon(Icons.local_activity_outlined),
-                  ),
-                  Wrap(
-                    spacing: AppSpacing.sm,
-                    crossAxisAlignment: WrapCrossAlignment.center,
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            PopupMenuButton<_HeaderMenuAction>(
+              tooltip: 'القائمة',
+              offset: const Offset(0, 12),
+              onSelected: (action) {
+                switch (action) {
+                  case _HeaderMenuAction.shipping:
+                    onNavigateToShipping();
+                    break;
+                  case _HeaderMenuAction.coupons:
+                    onNavigateToCoupons();
+                    break;
+                  case _HeaderMenuAction.logout:
+                    onLogout();
+                    break;
+                }
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  enabled: false,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      CircleAvatar(
-                        radius: 18,
-                        backgroundImage: const AssetImage('assets/images/placeholder-user.jpg'),
-                        child: Text(
-                          auth.displayName.characters.firstOrNull ?? 'أ',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
+                      Text(
+                        auth.displayName,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
                       ),
-                      TextButton(
-                        onPressed: onLogout,
-                        child: const Text('تسجيل الخروج'),
+                      if (auth.website != null)
+                        Text(
+                          auth.website!,
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(color: AppColors.mutedForeground),
+                        ),
+                    ],
+                  ),
+                ),
+                const PopupMenuDivider(),
+                const PopupMenuItem<_HeaderMenuAction>(
+                  value: _HeaderMenuAction.shipping,
+                  child: Row(
+                    children: [
+                      Icon(Icons.local_shipping_outlined, size: 18),
+                      SizedBox(width: AppSpacing.sm),
+                      Text('إدارة الشحن'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem<_HeaderMenuAction>(
+                  value: _HeaderMenuAction.coupons,
+                  child: Row(
+                    children: [
+                      Icon(Icons.local_activity_outlined, size: 18),
+                      SizedBox(width: AppSpacing.sm),
+                      Text('الكوبونات والعروض'),
+                    ],
+                  ),
+                ),
+                const PopupMenuDivider(),
+                const PopupMenuItem<_HeaderMenuAction>(
+                  value: _HeaderMenuAction.logout,
+                  child: Row(
+                    children: [
+                      Icon(Icons.logout, size: 18, color: AppColors.danger),
+                      SizedBox(width: AppSpacing.sm),
+                      Text(
+                        'تسجيل الخروج',
+                        style: TextStyle(color: AppColors.danger),
                       ),
                     ],
                   ),
+                ),
+              ],
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundImage: const AssetImage('assets/images/placeholder-user.jpg'),
+                    child: Text(
+                      auth.displayName.characters.firstOrNull ?? 'أ',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  const Icon(Icons.keyboard_arrow_down_rounded),
                 ],
               ),
             ),
@@ -318,6 +372,8 @@ class _Header extends StatelessWidget {
     );
   }
 }
+
+enum _HeaderMenuAction { shipping, coupons, logout }
 
 class _BottomNavigation extends StatelessWidget {
   const _BottomNavigation({

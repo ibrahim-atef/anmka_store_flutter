@@ -17,6 +17,66 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _twoFactorEnabled = false;
   bool _autoSyncEnabled = true;
 
+  Future<void> _showInviteDialog() async {
+    final nameController = TextEditingController();
+    final emailController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('دعوة عضو جديد'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'اسم العضو'),
+                  validator: (value) => value == null || value.trim().isEmpty ? 'الاسم مطلوب' : null,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                TextFormField(
+                  controller: emailController,
+                  decoration: const InputDecoration(labelText: 'البريد الإلكتروني'),
+                  validator: (value) {
+                    final trimmed = value?.trim() ?? '';
+                    if (trimmed.isEmpty) return 'البريد مطلوب';
+                    final emailRegex = RegExp(r'^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$');
+                    return emailRegex.hasMatch(trimmed) ? null : 'صيغة البريد غير صحيحة';
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (formKey.currentState?.validate() ?? false) {
+                  Navigator.of(ctx).pop(true);
+                }
+              },
+              child: const Text('إرسال الدعوة'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result == true) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تم إرسال الدعوة إلى ${emailController.text.trim()} (محاكاة).')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
@@ -105,11 +165,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 const SizedBox(height: AppSpacing.md),
                 OutlinedButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('دعوة عضو فريق جديدة قيد التطوير')),
-                    );
-                  },
+                  onPressed: _showInviteDialog,
                   icon: const Icon(Icons.person_add_alt),
                   label: const Text('دعوة عضو جديد'),
                 ),
