@@ -222,6 +222,7 @@ class _Header extends StatelessWidget {
       child: AppCard(
         padding: const EdgeInsets.all(AppSpacing.lg),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
               height: 48,
@@ -233,66 +234,83 @@ class _Header extends StatelessWidget {
               child: const Icon(Icons.storefront, color: AppColors.primary),
             ),
             const SizedBox(width: AppSpacing.md),
-            const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  AppStrings.appName,
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-                ),
-                Text(
-                  AppStrings.appSubtitle,
-                  style: TextStyle(color: AppColors.mutedForeground, fontSize: 12),
-                ),
-              ],
-            ),
-            const Spacer(),
-            IconButton(
-              onPressed: onNavigateToNotifications,
-              icon: const Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Icon(Icons.notifications_outlined),
-                  Positioned(
-                    right: -2,
-                    top: -2,
-                    child: CircleAvatar(
-                      backgroundColor: Colors.redAccent,
-                      radius: 8,
-                      child: Text(
-                        '3',
-                        style: TextStyle(fontSize: 10, color: Colors.white),
-                      ),
-                    ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Text(
+                    AppStrings.appName,
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                  ),
+                  SizedBox(height: AppSpacing.xs),
+                  Text(
+                    AppStrings.appSubtitle,
+                    style: TextStyle(color: AppColors.mutedForeground, fontSize: 12),
                   ),
                 ],
               ),
             ),
-            IconButton(
-              onPressed: onNavigateToShipping,
-              icon: const Icon(Icons.local_shipping_outlined),
-            ),
-            IconButton(
-              onPressed: onNavigateToCoupons,
-              icon: const Icon(Icons.local_activity_outlined),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 18,
-                  backgroundImage: const AssetImage('assets/images/placeholder-user.jpg'),
-                  child: Text(
-                    auth.displayName.characters.firstOrNull ?? 'أ',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+            const SizedBox(width: AppSpacing.md),
+            Flexible(
+              child: Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.sm,
+                alignment: WrapAlignment.end,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  IconButton(
+                    splashRadius: 22,
+                    onPressed: onNavigateToNotifications,
+                    icon: const Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Icon(Icons.notifications_outlined),
+                        Positioned(
+                          right: -2,
+                          top: -2,
+                          child: CircleAvatar(
+                            backgroundColor: Colors.redAccent,
+                            radius: 8,
+                            child: Text(
+                              '3',
+                              style: TextStyle(fontSize: 10, color: Colors.white),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                TextButton(
-                  onPressed: onLogout,
-                  child: const Text('تسجيل الخروج'),
-                ),
-              ],
+                  IconButton(
+                    splashRadius: 22,
+                    onPressed: onNavigateToShipping,
+                    icon: const Icon(Icons.local_shipping_outlined),
+                  ),
+                  IconButton(
+                    splashRadius: 22,
+                    onPressed: onNavigateToCoupons,
+                    icon: const Icon(Icons.local_activity_outlined),
+                  ),
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      CircleAvatar(
+                        radius: 18,
+                        backgroundImage: const AssetImage('assets/images/placeholder-user.jpg'),
+                        child: Text(
+                          auth.displayName.characters.firstOrNull ?? 'أ',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: onLogout,
+                        child: const Text('تسجيل الخروج'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ],
         ),
