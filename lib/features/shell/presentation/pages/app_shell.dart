@@ -1,4 +1,6 @@
+import 'dart:developer';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/constants/app_colors.dart';
@@ -6,18 +8,29 @@ import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/routing/navigation_controller.dart';
 import '../../../../core/widgets/app_card.dart';
-import '../../../auth/presentation/controllers/auth_controller.dart';
+import '../../../../core/network/dependency_injection.dart';
+import '../../../auth/logic/cubit/auth_cubit.dart';
+import '../../../auth/logic/states/auth_state.dart';
 import '../../../auth/presentation/pages/login_page.dart';
 import '../../../auth/presentation/widgets/welcome_overlay.dart';
+import '../../../customers/logic/cubit/customers_cubit.dart';
 import '../../../customers/presentation/pages/customers_page.dart';
+import '../../../dashboard/logic/cubit/dashboard_cubit.dart';
 import '../../../dashboard/presentation/pages/dashboard_page.dart';
+import '../../../orders/logic/cubit/orders_cubit.dart';
+import '../../../products/logic/cubit/products_cubit.dart';
+import '../../../notifications/logic/cubit/notifications_cubit.dart';
+import '../../../notifications/logic/states/notifications_state.dart';
 import '../../../notifications/presentation/pages/notifications_page.dart';
 import '../../../orders/presentation/pages/add_order_page.dart';
 import '../../../orders/presentation/pages/orders_page.dart';
 import '../../../products/presentation/pages/add_product_page.dart';
 import '../../../products/presentation/pages/products_page.dart';
+import '../../../settings/logic/cubit/settings_cubit.dart';
 import '../../../settings/presentation/pages/settings_page.dart';
+import '../../../shipping/logic/cubit/shipping_cubit.dart';
 import '../../../shipping/presentation/pages/shipping_page.dart';
+import '../../../coupons/logic/cubit/coupons_cubit.dart';
 import '../../../coupons/presentation/pages/coupons_page.dart';
 
 class AppShell extends StatefulWidget {
@@ -28,125 +41,187 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
+  bool _hasSeenWelcome = false;
+
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthController>();
-
-    if (auth.isLoading && !auth.isAuthenticated) {
-      return const Directionality(
-        textDirection: TextDirection.rtl,
-        child: Scaffold(
-          body: Center(child: CircularProgressIndicator()),
-        ),
-      );
-    }
-
-    if (!auth.isAuthenticated) {
-      return const Directionality(
-        textDirection: TextDirection.rtl,
-        child: LoginPage(),
-      );
-    }
-
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Stack(
-        children: [
-          const _AuthenticatedHome(),
-          if (!auth.hasSeenWelcome)
-            WelcomeOverlay(
-              userName: auth.displayName,
-              onContinue: () => auth.markWelcomeSeen(),
-            ),
-        ],
-      ),
+    return BlocConsumer<AuthCubit, AuthState>(
+      listener: (context, state) {
+        state.whenOrNull(
+          authenticated: (loginResponse) {
+            log('AppShell listener: User authenticated - ${loginResponse.user.name}');
+          },
+        );
+      },
+      builder: (context, state) {
+        log('AppShell rebuild - State: ${state.runtimeType}');
+        return state.when(
+          initial: () {
+            log('AppShell: Showing LoginPage (initial state)');
+            return const Directionality(
+              textDirection: TextDirection.rtl,
+              child: LoginPage(),
+            );
+          },
+          loading: () {
+            log('AppShell: Showing loading indicator');
+            return const Directionality(
+              textDirection: TextDirection.rtl,
+              child: Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              ),
+            );
+          },
+          authenticated: (loginResponse) {
+            log('AppShell: Showing authenticated home for user: ${loginResponse.user.name}');
+            return Directionality(
+              textDirection: TextDirection.rtl,
+              child: Stack(
+                children: [
+                  _AuthenticatedHome(userName: loginResponse.user.name),
+                  if (!_hasSeenWelcome)
+                    WelcomeOverlay(
+                      userName: loginResponse.user.name,
+                      onContinue: () => setState(() => _hasSeenWelcome = true),
+                    ),
+                ],
+              ),
+            );
+          },
+          unauthenticated: () {
+            log('AppShell: Showing LoginPage (unauthenticated state)');
+            return const Directionality(
+              textDirection: TextDirection.rtl,
+              child: LoginPage(),
+            );
+          },
+          error: (message) {
+            log('AppShell: Showing LoginPage (error state): $message');
+            return const Directionality(
+              textDirection: TextDirection.rtl,
+              child: LoginPage(),
+            );
+          },
+        );
+      },
     );
   }
 }
 
 class _AuthenticatedHome extends StatelessWidget {
-  const _AuthenticatedHome();
+  const _AuthenticatedHome({required this.userName});
+
+  final String userName;
 
   @override
   Widget build(BuildContext context) {
     final nav = context.watch<NavigationController>();
-    final auth = context.watch<AuthController>();
 
     Widget body;
     switch (nav.currentTab) {
       case AppTab.dashboard:
-        body = DashboardPage(userName: auth.displayName);
-      case AppTab.products:
-        body = ProductsPage(
-          onAddProduct: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (routeContext) => Directionality(
-                  textDirection: TextDirection.rtl,
-                  child: ProductFormPage(
-                    onBack: () => Navigator.of(routeContext).pop(),
-                  ),
-                ),
-              ),
-            );
-          },
+        body = BlocProvider(
+          create: (context) => getIt<DashboardCubit>()..getStats(),
+          child: DashboardPage(userName: userName),
         );
-      case AppTab.orders:
-        body = const OrdersPage();
-      case AppTab.customers:
-        body = const CustomersPage();
-      case AppTab.settings:
-        body = const SettingsPage();
-    }
-
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _Header(
-              onNavigateToNotifications: () => _openSheet(
-                context,
-                const NotificationsPage(),
-              ),
-              onNavigateToShipping: () => _openSheet(
-                context,
-                const ShippingPage(),
-              ),
-              onNavigateToCoupons: () => _openSheet(
-                context,
-                const CouponsPage(),
-              ),
-              onLogout: auth.logout,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            Expanded(child: body),
-          ],
-        ),
-      ),
-      bottomNavigationBar: _BottomNavigation(
-        currentTab: nav.currentTab,
-        onTabSelected: (tab) => context.read<NavigationController>().setTab(tab),
-      ),
-      floatingActionButton: nav.currentTab == AppTab.orders
-          ? FloatingActionButton.extended(
-              onPressed: () {
+      case AppTab.products:
+        body = BlocProvider(
+          create: (context) => getIt<ProductsCubit>()..getProducts(),
+          child: Builder(
+            builder: (productsContext) => ProductsPage(
+              onAddProduct: () {
+                final cubit = productsContext.read<ProductsCubit>();
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (routeContext) => Directionality(
-                      textDirection: TextDirection.rtl,
-                      child: AddOrderPage(
-                        onBack: () => Navigator.of(routeContext).pop(),
+                    builder: (routeContext) => BlocProvider.value(
+                      value: cubit,
+                      child: Directionality(
+                        textDirection: TextDirection.rtl,
+                        child: ProductFormPage(
+                          onBack: () => Navigator.of(routeContext).pop(),
+                        ),
                       ),
                     ),
                   ),
                 );
               },
-              icon: const Icon(Icons.add),
-              label: const Text('طلب جديد'),
-            )
-          : null,
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+            ),
+          ),
+        );
+      case AppTab.orders:
+        body = BlocProvider(
+          create: (context) => getIt<OrdersCubit>()..getOrders(),
+          child: const OrdersPage(),
+        );
+      case AppTab.customers:
+        body = BlocProvider(
+          create: (context) => getIt<CustomersCubit>()..getCustomers(),
+          child: const CustomersPage(),
+        );
+      case AppTab.settings:
+        body = BlocProvider(
+          create: (context) => getIt<SettingsCubit>()..loadSettings(),
+          child: const SettingsPage(),
+        );
+    }
+
+    return BlocProvider(
+      create: (context) => getIt<NotificationsCubit>()..getNotifications(),
+      child: Builder(
+        builder: (providerContext) {
+          return Scaffold(
+            backgroundColor: AppColors.background,
+            body: SafeArea(
+              child: Column(
+                children: [
+                  _Header(
+                    onNavigateToNotifications: () => _openSheet(
+                      providerContext,
+                      const NotificationsPage(),
+                    ),
+                    onNavigateToShipping: () => _openSheet(
+                      providerContext,
+                      const ShippingPage(),
+                    ),
+                    onNavigateToCoupons: () => _openSheet(
+                      providerContext,
+                      const CouponsPage(),
+                    ),
+                    onLogout: () => context.read<AuthCubit>().logout(),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  Expanded(child: body),
+                ],
+              ),
+            ),
+            bottomNavigationBar: _BottomNavigation(
+              currentTab: nav.currentTab,
+              onTabSelected: (tab) =>
+                  context.read<NavigationController>().setTab(tab),
+            ),
+            // floatingActionButton: nav.currentTab == AppTab.orders
+            //     ? FloatingActionButton.extended(
+            //         onPressed: () {
+            //           Navigator.of(context).push(
+            //             MaterialPageRoute(
+            //               builder: (routeContext) => Directionality(
+            //                 textDirection: TextDirection.rtl,
+            //                 child: AddOrderPage(
+            //                   onBack: () => Navigator.of(routeContext).pop(),
+            //                 ),
+            //               ),
+            //             ),
+            //           );
+            //         },
+            //         icon: const Icon(Icons.add),
+            //         label: const Text('طلب جديد'),
+            //       )
+            //     : null,
+            floatingActionButtonLocation:
+                FloatingActionButtonLocation.centerDocked,
+          );
+        },
+      ),
     );
   }
 
@@ -155,7 +230,39 @@ class _AuthenticatedHome extends StatelessWidget {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (ctx) {
+      builder: (sheetContext) {
+        Widget wrappedChild = child;
+
+        // Wrap with appropriate BlocProvider based on child type
+        // Use sheetContext to access providers from the parent widget tree
+        if (child is NotificationsPage) {
+          // Try to get the existing NotificationsCubit from the parent context
+          try {
+            final notificationsCubit = context.read<NotificationsCubit>();
+            wrappedChild = BlocProvider.value(
+              value: notificationsCubit,
+              child: child,
+            );
+          } catch (e) {
+            // If not found in context, create a new one
+            wrappedChild = BlocProvider(
+              create: (context) =>
+                  getIt<NotificationsCubit>()..getNotifications(),
+              child: child,
+            );
+          }
+        } else if (child is ShippingPage) {
+          wrappedChild = BlocProvider(
+            create: (context) => getIt<ShippingCubit>()..getShippingZones(),
+            child: child,
+          );
+        } else if (child is CouponsPage) {
+          wrappedChild = BlocProvider(
+            create: (context) => getIt<CouponsCubit>()..getCoupons(),
+            child: child,
+          );
+        }
+
         return Directionality(
           textDirection: TextDirection.rtl,
           child: DraggableScrollableSheet(
@@ -166,10 +273,12 @@ class _AuthenticatedHome extends StatelessWidget {
               return Container(
                 decoration: const BoxDecoration(
                   color: AppColors.surface,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
+                  borderRadius:
+                      BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
                 ),
                 child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
+                  borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(AppRadius.lg)),
                   child: ListView(
                     controller: controller,
                     padding: EdgeInsets.zero,
@@ -187,7 +296,7 @@ class _AuthenticatedHome extends StatelessWidget {
                           ),
                         ),
                       ),
-                      child,
+                      wrappedChild,
                     ],
                   ),
                 ),
@@ -215,7 +324,12 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthController>();
+    final userName = context.select<AuthCubit, String>(
+      (cubit) => cubit.state.maybeWhen(
+        authenticated: (response) => response.user.name,
+        orElse: () => 'مدير المتجر',
+      ),
+    );
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
@@ -245,33 +359,48 @@ class _Header extends StatelessWidget {
                   SizedBox(height: AppSpacing.xs),
                   Text(
                     AppStrings.appSubtitle,
-                    style: TextStyle(color: AppColors.mutedForeground, fontSize: 12),
+                    style: TextStyle(
+                        color: AppColors.mutedForeground, fontSize: 12),
                   ),
                 ],
               ),
             ),
-            IconButton(
-              splashRadius: 22,
-              tooltip: 'الإشعارات',
-              onPressed: onNavigateToNotifications,
-              icon: const Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Icon(Icons.notifications_outlined),
-                  Positioned(
-                    right: -2,
-                    top: -2,
-                    child: CircleAvatar(
-                      backgroundColor: Colors.redAccent,
-                      radius: 8,
-                      child: Text(
-                        '3',
-                        style: TextStyle(fontSize: 10, color: Colors.white),
-                      ),
-                    ),
+            BlocBuilder<NotificationsCubit, NotificationsState>(
+              builder: (context, state) {
+                final unreadCount = state.maybeWhen(
+                  loaded: (notificationsList) => notificationsList.unreadCount,
+                  orElse: () => 0,
+                );
+
+                return IconButton(
+                  splashRadius: 22,
+                  tooltip: 'الإشعارات',
+                  onPressed: onNavigateToNotifications,
+                  icon: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      const Icon(Icons.notifications_outlined),
+                      if (unreadCount > 0)
+                        Positioned(
+                          right: -2,
+                          top: -2,
+                          child: CircleAvatar(
+                            backgroundColor: Colors.redAccent,
+                            radius: 8,
+                            child: Text(
+                              unreadCount > 99 ? '99+' : '$unreadCount',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                ],
-              ),
+                );
+              },
             ),
             const SizedBox(width: AppSpacing.sm),
             PopupMenuButton<_HeaderMenuAction>(
@@ -298,19 +427,11 @@ class _Header extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        auth.displayName,
+                        userName,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               fontWeight: FontWeight.w700,
                             ),
                       ),
-                      if (auth.website != null)
-                        Text(
-                          auth.website!,
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
-                              ?.copyWith(color: AppColors.mutedForeground),
-                        ),
                     ],
                   ),
                 ),
@@ -355,9 +476,10 @@ class _Header extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 18,
-                    backgroundImage: const AssetImage('assets/images/placeholder-user.jpg'),
+                    backgroundImage:
+                        const AssetImage('assets/images/placeholder-user.jpg'),
                     child: Text(
-                      auth.displayName.characters.firstOrNull ?? 'أ',
+                      userName.characters.firstOrNull ?? 'أ',
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -414,4 +536,3 @@ class _BottomNavigation extends StatelessWidget {
     );
   }
 }
-

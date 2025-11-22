@@ -39,6 +39,24 @@ dependencies:
   # State management & utilities
   provider: ^6.1.2
   intl: ^0.20.2
+  flutter_bloc: ^8.1.6
+  equatable: ^2.0.5
+
+  # Network & API
+  dio: ^5.4.0
+  retrofit: ^4.0.3
+  pretty_dio_logger: ^1.3.1
+
+  # Dependency injection
+  get_it: ^7.6.4
+
+  # Storage
+  shared_preferences: ^2.2.2
+  flutter_secure_storage: ^9.0.0
+
+  # Code generation
+  json_annotation: ^4.8.1
+  freezed_annotation: ^2.4.1
 
   # UI components
   fl_chart: ^0.68.0
@@ -55,6 +73,12 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^4.0.0
+
+  # Code generation
+  build_runner: ^2.4.7
+  json_serializable: ^6.7.1
+  retrofit_generator: ^8.0.6
+  freezed: ^2.4.6
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

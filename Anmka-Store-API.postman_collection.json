@@ -1,0 +1,1102 @@
+{
+	"info": {
+		"_postman_id": "anmka-store-api-collection",
+		"name": "Anmka Store API",
+		"description": "Complete REST API collection for Anmka Store Admin Flutter App",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.token) {",
+									"        pm.environment.set('token', jsonData.token);",
+									"        pm.environment.set('user_id', jsonData.user.id);",
+									"        pm.environment.set('user_name', jsonData.user.name);",
+									"        console.log('Token saved successfully');",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"admin\",\n    \"password\": \"password\",\n    \"website\": \"https://demo1.anmka.com\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/auth/login",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "auth", "login"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/auth/logout",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "auth", "logout"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Forgot Password",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"admin@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/auth/forgot-password",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "auth", "forgot-password"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Products",
+			"item": [
+				{
+					"name": "Get All Products",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/products?page=1&limit=20&search=&category=&status=",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "products"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "20"
+								},
+								{
+									"key": "search",
+									"value": ""
+								},
+								{
+									"key": "category",
+									"value": ""
+								},
+								{
+									"key": "status",
+									"value": ""
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Product by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/products/1",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "products", "1"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Product",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"New Product\",\n    \"category\": \"Electronics\",\n    \"price\": 99.99,\n    \"stock\": 100,\n    \"sku\": \"PROD-001\",\n    \"description\": \"Product description\",\n    \"image\": \"https://example.com/image.jpg\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/products",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "products"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Product",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Updated Product\",\n    \"price\": 149.99,\n    \"stock\": 50\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/products/1",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "products", "1"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Product",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/products/1",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "products", "1"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Orders",
+			"item": [
+				{
+					"name": "Get All Orders",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/orders?page=1&limit=20&status=&paymentStatus=&shippingStatus=",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "orders"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "20"
+								},
+								{
+									"key": "status",
+									"value": ""
+								},
+								{
+									"key": "paymentStatus",
+									"value": ""
+								},
+								{
+									"key": "shippingStatus",
+									"value": ""
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Order by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/orders/1",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "orders", "1"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Order",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"customerName\": \"John Doe\",\n    \"customerEmail\": \"john@example.com\",\n    \"customerPhone\": \"+1234567890\",\n    \"items\": [\n        {\n            \"productId\": 1,\n            \"quantity\": 2\n        }\n    ],\n    \"shippingAddress\": \"123 Main St, City, Country\",\n    \"notes\": \"Order notes\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/orders",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "orders"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Order Status",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"inProgress\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/orders/1/status",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "orders", "1", "status"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Payment Status",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"paymentStatus\": \"paid\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/orders/1/payment-status",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "orders", "1", "payment-status"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Shipping Status",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"shippingStatus\": \"inTransit\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/orders/1/shipping-status",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "orders", "1", "shipping-status"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Invoice",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/orders/1/invoice",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "orders", "1", "invoice"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Customers",
+			"item": [
+				{
+					"name": "Get All Customers",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/customers?page=1&limit=20&tier=&search=",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "customers"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "20"
+								},
+								{
+									"key": "tier",
+									"value": ""
+								},
+								{
+									"key": "search",
+									"value": ""
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Customer by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/customers/1",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "customers", "1"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Dashboard",
+			"item": [
+				{
+					"name": "Get Stats",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/dashboard/stats",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "dashboard", "stats"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Sales",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/dashboard/sales?period=monthly&startDate=&endDate=",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "dashboard", "sales"],
+							"query": [
+								{
+									"key": "period",
+									"value": "monthly"
+								},
+								{
+									"key": "startDate",
+									"value": ""
+								},
+								{
+									"key": "endDate",
+									"value": ""
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Top Products",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/dashboard/top-products?limit=10&period=month",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "dashboard", "top-products"],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "period",
+									"value": "month"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Traffic Sources",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/dashboard/traffic-sources",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "dashboard", "traffic-sources"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Recent Activities",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/dashboard/recent-activities?limit=10",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "dashboard", "recent-activities"],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Coupons",
+			"item": [
+				{
+					"name": "Get All Coupons",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/coupons",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "coupons"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Coupon",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"code\": \"SAVE20\",\n    \"type\": \"percent\",\n    \"discountValue\": 20,\n    \"maxUsage\": 100,\n    \"validUntil\": \"2024-12-31T23:59:59Z\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/coupons",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "coupons"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Coupon",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"code\": \"SAVE20\",\n    \"type\": \"percent\",\n    \"discountValue\": 25,\n    \"isActive\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/coupons/1",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "coupons", "1"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Coupon",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/coupons/1",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "coupons", "1"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Shipping",
+			"item": [
+				{
+					"name": "Get Shipping Zones",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/shipping/zones",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "shipping", "zones"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Shipping Zone",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Local Delivery\",\n    \"deliveryTime\": \"2-3 days\",\n    \"cost\": 10.00,\n    \"coverage\": \"City Area\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/shipping/zones",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "shipping", "zones"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Shipping Zone",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Updated Zone\",\n    \"cost\": 15.00\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/shipping/zones/1",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "shipping", "zones", "1"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Shipping Zone",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/shipping/zones/1",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "shipping", "zones", "1"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Tracking Updates",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/shipping/tracking-updates?orderId=&limit=20",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "shipping", "tracking-updates"],
+							"query": [
+								{
+									"key": "orderId",
+									"value": ""
+								},
+								{
+									"key": "limit",
+									"value": "20"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Notifications",
+			"item": [
+				{
+					"name": "Get All Notifications",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/notifications?category=&read=&limit=20",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "notifications"],
+							"query": [
+								{
+									"key": "category",
+									"value": ""
+								},
+								{
+									"key": "read",
+									"value": ""
+								},
+								{
+									"key": "limit",
+									"value": "20"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Mark Notification as Read",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/notifications/1/read",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "notifications", "1", "read"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Mark All Notifications as Read",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/notifications/read-all",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "notifications", "read-all"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Settings",
+			"item": [
+				{
+					"name": "Get Store Settings",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/settings/store",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "settings", "store"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Store Settings",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"storeName\": \"My Store\",\n    \"storeCategory\": \"Electronics\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/settings/store",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "settings", "store"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Notification Settings",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/settings/notifications",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "settings", "notifications"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Notification Settings",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"notificationsEnabled\": true,\n    \"twoFactorEnabled\": false,\n    \"autoSyncEnabled\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/settings/notifications",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "settings", "notifications"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Team",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/settings/team",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "settings", "team"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Invite Team Member",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"John Doe\",\n    \"email\": \"john@example.com\",\n    \"role\": \"manager\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/settings/team/invite",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "settings", "team", "invite"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Reset Team Password",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/wp-json/anmka/v1/settings/team/1/reset-password",
+							"host": ["{{base_url}}"],
+							"path": ["wp-json", "anmka", "v1", "settings", "team", "1", "reset-password"]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "https://demo1.anmka.com",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "user_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "user_name",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Check if token exists for protected routes",
+					"const protectedRoutes = ['/products', '/orders', '/customers', '/dashboard', '/coupons', '/shipping', '/notifications', '/settings'];",
+					"const currentUrl = pm.request.url.toString();",
+					"const isProtected = protectedRoutes.some(route => currentUrl.includes(route));",
+					"",
+					"if (isProtected && !pm.environment.get('token')) {",
+					"    console.warn('Warning: No token found. Please login first.');",
+					"}"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global test script",
+					"pm.test('Response time is less than 5000ms', function () {",
+					"    pm.expect(pm.response.responseTime).to.be.below(5000);",
+					"});",
+					"",
+					"// Check for common error codes",
+					"if (pm.response.code === 401) {",
+					"    console.warn('Unauthorized: Token may be expired. Please login again.');",
+					"}",
+					"",
+					"if (pm.response.code === 403) {",
+					"    console.warn('Forbidden: Check if you have proper permissions.');",
+					"}"
+				]
+			}
+		}
+	]
+}
+

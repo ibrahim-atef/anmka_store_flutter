@@ -1,37 +1,52 @@
 import 'package:flutter/material.dart';
-
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_spacing.dart';
-import '../../../../core/data/mock_data.dart' as data;
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/badge_chip.dart';
 import '../../../../core/widgets/section_header.dart';
-import '../../domain/entities/customer.dart';
+import '../../data/models/response/customer_response.dart';
+import '../../logic/cubit/customers_cubit.dart';
+import '../../logic/states/customers_state.dart';
 
 class CustomersPage extends StatelessWidget {
   const CustomersPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final customers = data.customers;
+    return BlocBuilder<CustomersCubit, CustomersState>(
+      builder: (context, state) {
+        return state.when(
+          initial: () => const Center(child: CircularProgressIndicator()),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          loaded: (customersList) {
+            final customers = customersList.customers;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SectionHeader(
-            title: 'العملاء',
-            subtitle: 'تعرف على عملاء متجرك وتابع نشاطهم',
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          Wrap(
-            spacing: AppSpacing.lg,
-            runSpacing: AppSpacing.lg,
-            children: [
-              for (final customer in customers)
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SectionHeader(
+                    title: 'العملاء',
+                    subtitle: 'تعرف على عملاء متجرك وتابع نشاطهم',
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  if (customers.isEmpty)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(AppSpacing.xl),
+                        child: Text('لا يوجد عملاء'),
+                      ),
+                    )
+                  else
+                    Wrap(
+                      spacing: AppSpacing.lg,
+                      runSpacing: AppSpacing.lg,
+                      children: [
+                        for (final customer in customers)
                 SizedBox(
                   width: 320,
                   child: AppCard(
@@ -43,7 +58,15 @@ class CustomersPage extends StatelessWidget {
                           children: [
                             CircleAvatar(
                               radius: 28,
-                              backgroundImage: AssetImage(customer.avatar),
+                              backgroundImage: customer.avatar != null
+                                  ? NetworkImage(customer.avatar!)
+                                  : null,
+                              child: customer.avatar == null
+                                  ? Text(
+                                      customer.name.characters.firstOrNull ?? 'أ',
+                                      style: const TextStyle(fontSize: 20),
+                                    )
+                                  : null,
                             ),
                             const SizedBox(width: AppSpacing.md),
                             Expanded(
@@ -59,11 +82,13 @@ class CustomersPage extends StatelessWidget {
                                     customer.email,
                                     style: const TextStyle(color: AppColors.mutedForeground, fontSize: 12),
                                   ),
-                                  const SizedBox(height: AppSpacing.xs),
-                                  Text(
-                                    customer.phone,
-                                    style: const TextStyle(color: AppColors.mutedForeground, fontSize: 12),
-                                  ),
+                                  if (customer.phone != null) ...[
+                                    const SizedBox(height: AppSpacing.xs),
+                                    Text(
+                                      customer.phone!,
+                                      style: const TextStyle(color: AppColors.mutedForeground, fontSize: 12),
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),
@@ -74,12 +99,12 @@ class CustomersPage extends StatelessWidget {
                           children: [
                             _MetricTile(
                               title: 'عدد الطلبات',
-                              value: customer.totalOrders.toString(),
+                              value: '${customer.totalOrders ?? 0}',
                             ),
                             const SizedBox(width: AppSpacing.sm),
                             _MetricTile(
                               title: 'إجمالي الإنفاق',
-                              value: 'ج${customer.totalSpent.toStringAsFixed(0)}',
+                              value: 'ج${(customer.totalSpent ?? 0).toStringAsFixed(0)}',
                             ),
                           ],
                         ),
@@ -87,15 +112,18 @@ class CustomersPage extends StatelessWidget {
                         Wrap(
                           spacing: AppSpacing.sm,
                           children: [
-                            BadgeChip(
-                              label: _tierLabel(customer.tier),
-                              tone: switch (customer.tier) {
-                                CustomerTier.vip => BadgeTone.success,
-                                CustomerTier.loyal => BadgeTone.info,
-                                CustomerTier.newCustomer => BadgeTone.warning,
-                              },
-                            ),
-                            for (final tag in customer.tags) BadgeChip(label: tag),
+                            if (customer.tier != null)
+                              BadgeChip(
+                                label: _tierLabel(customer.tier!),
+                                tone: switch (customer.tier) {
+                                  'vip' => BadgeTone.success,
+                                  'loyal' => BadgeTone.info,
+                                  'newCustomer' => BadgeTone.warning,
+                                  _ => BadgeTone.neutral,
+                                },
+                              ),
+                            if (customer.tags != null)
+                              for (final tag in customer.tags!) BadgeChip(label: tag),
                           ],
                         ),
                         const SizedBox(height: AppSpacing.md),
@@ -105,7 +133,9 @@ class CustomersPage extends StatelessWidget {
                                 size: 16, color: AppColors.mutedForeground),
                             const SizedBox(width: AppSpacing.xs),
                             Text(
-                              'آخر نشاط: ${DateFormat('d MMM', 'ar').format(customer.lastActive)}',
+                              customer.lastActive != null
+                                  ? 'آخر نشاط: ${customer.lastActive}'
+                                  : 'لا يوجد نشاط',
                               style: const TextStyle(
                                   color: AppColors.mutedForeground, fontSize: 12),
                             ),
@@ -124,18 +154,36 @@ class CustomersPage extends StatelessWidget {
                     ),
                   ),
                 ),
-            ],
+                      ],
+                    ),
+                  ],
+                ),
+              );
+          },
+          customerLoaded: (customer) => const Center(child: Text('Customer loaded')),
+          error: (message) => Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text('خطأ: $message'),
+                ElevatedButton(
+                  onPressed: () => context.read<CustomersCubit>().getCustomers(),
+                  child: const Text('إعادة المحاولة'),
+                ),
+              ],
+            ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  String _tierLabel(CustomerTier tier) {
+  String _tierLabel(String tier) {
     return switch (tier) {
-      CustomerTier.newCustomer => 'عميل جديد',
-      CustomerTier.loyal => 'عميل وفي',
-      CustomerTier.vip => 'عميل VIP',
+      'newCustomer' => 'عميل جديد',
+      'loyal' => 'عميل وفي',
+      'vip' => 'عميل VIP',
+      _ => tier,
     };
   }
 }

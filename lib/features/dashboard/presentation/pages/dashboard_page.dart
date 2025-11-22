@@ -1,5 +1,6 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_spacing.dart';
@@ -7,6 +8,10 @@ import '../../../../core/data/mock_data.dart' as data;
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/badge_chip.dart';
 import '../../../../core/widgets/section_header.dart';
+import '../../logic/cubit/dashboard_cubit.dart';
+import '../../logic/states/dashboard_state.dart';
+
+enum SalesPeriod { daily, weekly, monthly }
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key, required this.userName});
@@ -22,24 +27,44 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      child: Column(
-        children: [
-          _buildWelcomeHero(context),
-          const SizedBox(height: AppSpacing.lg),
-          _buildStatsGrid(),
-          const SizedBox(height: AppSpacing.lg),
-          _buildSalesChart(context),
-          const SizedBox(height: AppSpacing.lg),
-          _buildTwoColumnSection(
-            left: _buildTopProducts(),
-            right: _buildTrafficSources(),
+    return BlocBuilder<DashboardCubit, DashboardState>(
+      builder: (context, state) {
+        return state.when(
+          initial: () => const Center(child: CircularProgressIndicator()),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          loaded: (stats) => SingleChildScrollView(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Column(
+              children: [
+                _buildWelcomeHero(context),
+                const SizedBox(height: AppSpacing.lg),
+                _buildStatsGrid(),
+                const SizedBox(height: AppSpacing.lg),
+                _buildSalesChart(context),
+                const SizedBox(height: AppSpacing.lg),
+                _buildTwoColumnSection(
+                  left: _buildTopProducts(),
+                  right: _buildTrafficSources(),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                _buildRecentActivity(),
+              ],
+            ),
           ),
-          const SizedBox(height: AppSpacing.lg),
-          _buildRecentActivity(),
-        ],
-      ),
+          error: (message) => Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text('خطأ: $message'),
+                ElevatedButton(
+                  onPressed: () => context.read<DashboardCubit>().getStats(),
+                  child: const Text('إعادة المحاولة'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -92,34 +117,79 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildStatsGrid() {
-    final chunks = List.generate(
-      (data.dashboardStats.length / 2).ceil(),
-      (index) => data.dashboardStats.skip(index * 2).take(2).toList(),
-    );
+    return BlocBuilder<DashboardCubit, DashboardState>(
+      builder: (context, state) {
+        final stats = state.maybeWhen(
+          loaded: (stats) => stats,
+          orElse: () => null,
+        );
 
-    return Column(
-      children: [
-        for (final row in chunks) ...[
-          Row(
-            children: [
-              for (final stat in row) ...[
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppSpacing.sm),
-                    child: AppCard(
-                      child: _StatTile(stat: stat),
-                    ),
-                  ),
-                ),
-              ],
-              if (row.length == 1)
-                const Expanded(
-                  child: SizedBox.shrink(),
-                ),
-            ],
+        if (stats == null) {
+          return const SizedBox.shrink();
+        }
+
+        // Create stats from API data
+        final dashboardStats = [
+          data.DashboardStat(
+            icon: 'money',
+            title: 'إجمالي المبيعات',
+            value: 'ج${(stats.totalSales ?? 0).toStringAsFixed(0)}',
+            change: '+${(stats.growth ?? 0).toStringAsFixed(1)}%',
+            changeIsPositive: (stats.growth ?? 0) >= 0,
           ),
-        ],
-      ],
+          data.DashboardStat(
+            icon: 'cart',
+            title: 'عدد الطلبات',
+            value: '${stats.totalOrders ?? 0}',
+            change: '+12.5%',
+            changeIsPositive: true,
+          ),
+          data.DashboardStat(
+            icon: 'users',
+            title: 'عدد العملاء',
+            value: '${stats.totalCustomers ?? 0}',
+            change: '+8.2%',
+            changeIsPositive: true,
+          ),
+          data.DashboardStat(
+            icon: 'inventory',
+            title: 'عدد المنتجات',
+            value: '${stats.totalProducts ?? 0}',
+            change: '+5.1%',
+            changeIsPositive: true,
+          ),
+        ];
+
+        final chunks = List.generate(
+          (dashboardStats.length / 2).ceil(),
+          (index) => dashboardStats.skip(index * 2).take(2).toList(),
+        );
+
+        return Column(
+          children: [
+            for (final row in chunks) ...[
+              Row(
+                children: [
+                  for (final stat in row) ...[
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.all(AppSpacing.sm),
+                        child: AppCard(
+                          child: _StatTile(stat: stat),
+                        ),
+                      ),
+                    ),
+                  ],
+                  if (row.length == 1)
+                    const Expanded(
+                      child: SizedBox.shrink(),
+                    ),
+                ],
+              ),
+            ],
+          ],
+        );
+      },
     );
   }
 
@@ -212,8 +282,10 @@ class _DashboardPageState extends State<DashboardPage> {
                       },
                     ),
                   ),
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
                 ),
                 borderData: FlBorderData(show: false),
                 minX: 0,
@@ -294,7 +366,8 @@ class _DashboardPageState extends State<DashboardPage> {
                       const SizedBox(height: AppSpacing.xs),
                       Text(
                         'تم بيع ${product.sales} قطعة',
-                        style: const TextStyle(color: AppColors.mutedForeground, fontSize: 12),
+                        style: const TextStyle(
+                            color: AppColors.mutedForeground, fontSize: 12),
                       ),
                     ],
                   ),
@@ -332,7 +405,8 @@ class _DashboardPageState extends State<DashboardPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(source.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                  Text(source.name,
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
                   const SizedBox(height: AppSpacing.xs),
                   Row(
                     children: [
@@ -361,7 +435,8 @@ class _DashboardPageState extends State<DashboardPage> {
                   const SizedBox(height: AppSpacing.xs),
                   Text(
                     '${source.value.toStringAsFixed(0)} زيارة • ${source.percentage.toStringAsFixed(0)}%',
-                    style: const TextStyle(color: AppColors.mutedForeground, fontSize: 12),
+                    style: const TextStyle(
+                        color: AppColors.mutedForeground, fontSize: 12),
                   ),
                 ],
               ),
@@ -412,7 +487,8 @@ class _DashboardPageState extends State<DashboardPage> {
                         const SizedBox(height: AppSpacing.xs),
                         Text(
                           activity.subtitle,
-                          style: const TextStyle(color: AppColors.mutedForeground, fontSize: 12),
+                          style: const TextStyle(
+                              color: AppColors.mutedForeground, fontSize: 12),
                         ),
                       ],
                     ),
@@ -533,13 +609,16 @@ class _StatTile extends StatelessWidget {
             Icon(
               stat.changeIsPositive ? Icons.trending_up : Icons.trending_down,
               size: 16,
-              color: stat.changeIsPositive ? AppColors.success : AppColors.danger,
+              color:
+                  stat.changeIsPositive ? AppColors.success : AppColors.danger,
             ),
             const SizedBox(width: AppSpacing.xs),
             Text(
               stat.change,
               style: TextStyle(
-                color: stat.changeIsPositive ? AppColors.success : AppColors.danger,
+                color: stat.changeIsPositive
+                    ? AppColors.success
+                    : AppColors.danger,
               ),
             ),
           ],
@@ -548,6 +627,3 @@ class _StatTile extends StatelessWidget {
     );
   }
 }
-
-enum SalesPeriod { daily, weekly, monthly }
-

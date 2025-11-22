@@ -1,10 +1,13 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/widgets/app_card.dart';
-import '../controllers/auth_controller.dart';
+import '../../logic/cubit/auth_cubit.dart';
+import '../../logic/states/auth_state.dart';
 import 'forgot_password_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -51,32 +54,16 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _handleLogin() async {
-    final auth = context.read<AuthController>();
+    final authCubit = context.read<AuthCubit>();
+    // Clear previous error message but keep form data
     setState(() => _errorMessage = null);
 
-    final success = await auth.login(
+    authCubit.login(
       username: _usernameController.text.trim(),
       password: _passwordController.text.trim(),
       website: _websiteController.text.trim(),
     );
-
-    if (!mounted) return;
-
-    if (!success) {
-      setState(() {
-        _errorMessage = 'بيانات تسجيل الدخول غير صحيحة. يرجى المحاولة مرة أخرى.';
-      });
-    } else {
-      FocusScope.of(context).unfocus();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('تم تسجيل الدخول بنجاح.'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    }
+    // Note: We don't clear the controllers here to preserve user input on error
   }
 
   void _openForgotPassword() {
@@ -93,207 +80,290 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthController>();
+    return BlocConsumer<AuthCubit, AuthState>(
+      listener: (context, state) {
+        state.when(
+          initial: () {},
+          loading: () {},
+          authenticated: (loginResponse) {
+            log('authenticated: ${loginResponse.token}');
+            if (!mounted) return;
+            FocusScope.of(context).unfocus();
+            // AppShell will automatically rebuild and show authenticated home
+            // No need to navigate manually as AppShell listens to AuthState
+            // Show success message after a brief delay to ensure state is updated
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('تم تسجيل الدخول بنجاح.'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            });
+          },
+          unauthenticated: () {},
+          error: (message) {
+            log('Login error: $message');
+            if (!mounted) return;
+            // Display error message in the form
+            setState(() {
+              _errorMessage = message;
+            });
+            // Also show error snackbar for better visibility
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(message),
+                    backgroundColor: AppColors.danger,
+                    behavior: SnackBarBehavior.floating,
+                    duration: const Duration(seconds: 5),
+                  ),
+                );
+              }
+            });
+            // Note: Form fields are NOT cleared - user data is preserved
+          },
+        );
+      },
+      builder: (context, state) {
+        final isLoading = state.maybeWhen(
+          loading: () => true,
+          orElse: () => false,
+        );
 
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Color(0xFF0F172A),
-              Color(0xFF1E293B),
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(AppSpacing.xl),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: Directionality(
-                  textDirection: TextDirection.rtl,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildBrand(),
-                      const SizedBox(height: AppSpacing.xl),
-                      AppCard(
-                        padding: const EdgeInsets.all(AppSpacing.xl),
-                        child: Form(
-                          key: _formKey,
-                          autovalidateMode: _autovalidateMode,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'تسجيل الدخول',
-                                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                              ),
-                              const SizedBox(height: AppSpacing.sm),
-                              Text(
-                                'ادخل بياناتك للوصول إلى لوحة التحكم',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
-                                    ?.copyWith(color: AppColors.mutedForeground),
-                              ),
-                              const SizedBox(height: AppSpacing.xl),
-                              if (_errorMessage != null)
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(AppSpacing.md),
-                                  margin: const EdgeInsets.only(bottom: AppSpacing.md),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.danger.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(AppRadius.md),
-                                    border: Border.all(color: AppColors.danger.withOpacity(0.2)),
-                                  ),
-                                  child: Text(
-                                    _errorMessage!,
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                      color: AppColors.danger,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              _buildInputField(
-                                controller: _websiteController,
-                                label: 'رابط الموقع',
-                                hint: 'https://mystore.com',
-                                icon: Icons.public,
-                                enabled: !auth.isLoading,
-                                autofillHints: const [AutofillHints.url],
-                                validator: (value) {
-                                  final trimmed = value?.trim() ?? '';
-                                  if (trimmed.isEmpty) {
-                                    return 'يرجى إدخال رابط المتجر.';
-                                  }
-                                  final uri = Uri.tryParse(trimmed);
-                                  if (uri == null || (!uri.isScheme('https') && !uri.isScheme('http'))) {
-                                    return 'يرجى إدخال رابط صحيح يبدأ بـ https://';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: AppSpacing.lg),
-                              _buildInputField(
-                                controller: _usernameController,
-                                label: 'اسم المستخدم',
-                                hint: 'أدخل اسم المستخدم',
-                                icon: Icons.person_outline,
-                                enabled: !auth.isLoading,
-                                autofillHints: const [AutofillHints.username],
-                                validator: (value) {
-                                  final trimmed = value?.trim() ?? '';
-                                  if (trimmed.isEmpty) {
-                                    return 'اسم المستخدم مطلوب.';
-                                  }
-                                  if (trimmed.length < 3) {
-                                    return 'يجب أن يحتوي اسم المستخدم على 3 أحرف على الأقل.';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: AppSpacing.lg),
-                              _buildInputField(
-                                controller: _passwordController,
-                                label: 'كلمة المرور',
-                                hint: 'أدخل كلمة المرور',
-                                icon: Icons.lock_outline,
-                                enabled: !auth.isLoading,
-                                obscureText: !_showPassword,
-                                textInputAction: TextInputAction.done,
-                                enableSuggestions: false,
-                                autofillHints: const [AutofillHints.password],
-                                onFieldSubmitted: (_) => _submitLogin(),
-                                suffix: IconButton(
-                                  onPressed: () => setState(() => _showPassword = !_showPassword),
-                                  icon: Icon(
-                                    _showPassword ? Icons.visibility_off : Icons.visibility,
-                                    color: Colors.white54,
-                                  ),
-                                ),
-                                validator: (value) {
-                                  final trimmed = value ?? '';
-                                  if (trimmed.isEmpty) {
-                                    return 'كلمة المرور مطلوبة.';
-                                  }
-                                  if (trimmed.length < 6) {
-                                    return 'يجب أن تحتوي كلمة المرور على 6 أحرف على الأقل.';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: AppSpacing.md),
-                              Row(
+        return Scaffold(
+          body: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Color(0xFF0F172A),
+                  Color(0xFF1E293B),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+            child: SafeArea(
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(AppSpacing.xl),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 420),
+                    child: Directionality(
+                      textDirection: TextDirection.rtl,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildBrand(),
+                          const SizedBox(height: AppSpacing.xl),
+                          AppCard(
+                            padding: const EdgeInsets.all(AppSpacing.xl),
+                            child: Form(
+                              key: _formKey,
+                              autovalidateMode: _autovalidateMode,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Checkbox(
-                                    value: _rememberMe,
-                                    activeColor: AppColors.primary,
-                                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                    onChanged: auth.isLoading
-                                        ? null
-                                        : (value) {
-                                            setState(() => _rememberMe = value ?? false);
-                                          },
-                                  ),
-                                  const SizedBox(width: AppSpacing.sm),
-                                  const Text('تذكرني'),
-                                  const Spacer(),
-                                  Flexible(
-                                    child: Align(
-                                      alignment: Alignment.centerLeft,
-                                      child: TextButton(
-                                        style: TextButton.styleFrom(
-                                          padding: EdgeInsets.zero,
-                                          minimumSize: const Size(0, 0),
-                                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  Text(
+                                    'تسجيل الدخول',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .headlineSmall
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w700,
                                         ),
-                                        onPressed: auth.isLoading ? null : _openForgotPassword,
-                                        child: const Text('نسيت كلمة المرور؟'),
+                                  ),
+                                  const SizedBox(height: AppSpacing.sm),
+                                  Text(
+                                    'ادخل بياناتك للوصول إلى لوحة التحكم',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                            color: AppColors.mutedForeground),
+                                  ),
+                                  const SizedBox(height: AppSpacing.xl),
+                                  if (_errorMessage != null)
+                                    Container(
+                                      width: double.infinity,
+                                      padding:
+                                          const EdgeInsets.all(AppSpacing.md),
+                                      margin: const EdgeInsets.only(
+                                          bottom: AppSpacing.md),
+                                      decoration: BoxDecoration(
+                                        color:
+                                            AppColors.danger.withOpacity(0.1),
+                                        borderRadius:
+                                            BorderRadius.circular(AppRadius.md),
+                                        border: Border.all(
+                                            color: AppColors.danger
+                                                .withOpacity(0.2)),
+                                      ),
+                                      child: Text(
+                                        _errorMessage!,
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                          color: AppColors.danger,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
                                     ),
+                                  _buildInputField(
+                                    controller: _websiteController,
+                                    label: 'رابط الموقع',
+                                    hint: 'https://mystore.com',
+                                    icon: Icons.public,
+                                    enabled: !isLoading,
+                                    autofillHints: const [AutofillHints.url],
+                                    validator: (value) {
+                                      final trimmed = value?.trim() ?? '';
+                                      if (trimmed.isEmpty) {
+                                        return 'يرجى إدخال رابط المتجر.';
+                                      }
+                                      final uri = Uri.tryParse(trimmed);
+                                      if (uri == null ||
+                                          (!uri.isScheme('https') &&
+                                              !uri.isScheme('http'))) {
+                                        return 'يرجى إدخال رابط صحيح يبدأ بـ https://';
+                                      }
+                                      return null;
+                                    },
                                   ),
+                                  const SizedBox(height: AppSpacing.lg),
+                                  _buildInputField(
+                                    controller: _usernameController,
+                                    label: 'اسم المستخدم',
+                                    hint: 'أدخل اسم المستخدم',
+                                    icon: Icons.person_outline,
+                                    enabled: !isLoading,
+                                    autofillHints: const [
+                                      AutofillHints.username
+                                    ],
+                                    validator: (value) {
+                                      final trimmed = value?.trim() ?? '';
+                                      if (trimmed.isEmpty) {
+                                        return 'اسم المستخدم مطلوب.';
+                                      }
+                                      if (trimmed.length < 3) {
+                                        return 'يجب أن يحتوي اسم المستخدم على 3 أحرف على الأقل.';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  const SizedBox(height: AppSpacing.lg),
+                                  _buildInputField(
+                                    controller: _passwordController,
+                                    label: 'كلمة المرور',
+                                    hint: 'أدخل كلمة المرور',
+                                    icon: Icons.lock_outline,
+                                    enabled: !isLoading,
+                                    obscureText: !_showPassword,
+                                    textInputAction: TextInputAction.done,
+                                    enableSuggestions: false,
+                                    autofillHints: const [
+                                      AutofillHints.password
+                                    ],
+                                    onFieldSubmitted: (_) => _submitLogin(),
+                                    suffix: IconButton(
+                                      onPressed: () => setState(
+                                          () => _showPassword = !_showPassword),
+                                      icon: Icon(
+                                        _showPassword
+                                            ? Icons.visibility_off
+                                            : Icons.visibility,
+                                        color: Colors.white54,
+                                      ),
+                                    ),
+                                    validator: (value) {
+                                      final trimmed = value ?? '';
+                                      if (trimmed.isEmpty) {
+                                        return 'كلمة المرور مطلوبة.';
+                                      }
+                                      if (trimmed.length < 6) {
+                                        return 'يجب أن تحتوي كلمة المرور على 6 أحرف على الأقل.';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  const SizedBox(height: AppSpacing.md),
+                                  Row(
+                                    children: [
+                                      Checkbox(
+                                        value: _rememberMe,
+                                        activeColor: AppColors.primary,
+                                        materialTapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                        onChanged: isLoading
+                                            ? null
+                                            : (value) {
+                                                setState(() => _rememberMe =
+                                                    value ?? false);
+                                              },
+                                      ),
+                                      const SizedBox(width: AppSpacing.sm),
+                                      const Text('تذكرني'),
+                                      const Spacer(),
+                                      Flexible(
+                                        child: Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: TextButton(
+                                            style: TextButton.styleFrom(
+                                              padding: EdgeInsets.zero,
+                                              minimumSize: const Size(0, 0),
+                                              tapTargetSize:
+                                                  MaterialTapTargetSize
+                                                      .shrinkWrap,
+                                            ),
+                                            onPressed: isLoading
+                                                ? null
+                                                : _openForgotPassword,
+                                            child:
+                                                const Text('نسيت كلمة المرور؟'),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: AppSpacing.lg),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: ElevatedButton(
+                                      onPressed:
+                                          isLoading ? null : _submitLogin,
+                                      child: isLoading
+                                          ? const SizedBox(
+                                              height: 20,
+                                              width: 20,
+                                              child: CircularProgressIndicator(
+                                                  strokeWidth: 2),
+                                            )
+                                          : const Text('تسجيل الدخول'),
+                                    ),
+                                  ),
+                                  const SizedBox(height: AppSpacing.lg),
+                                  Divider(
+                                      color: AppColors.border.withOpacity(0.6)),
+                                  const SizedBox(height: AppSpacing.md),
+                                  _buildSecurityNotice(context),
                                 ],
                               ),
-                              const SizedBox(height: AppSpacing.lg),
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton(
-                                  onPressed: auth.isLoading ? null : _submitLogin,
-                                  child: auth.isLoading
-                                      ? const SizedBox(
-                                          height: 20,
-                                          width: 20,
-                                          child: CircularProgressIndicator(strokeWidth: 2),
-                                        )
-                                      : const Text('تسجيل الدخول'),
-                                ),
-                              ),
-                              const SizedBox(height: AppSpacing.lg),
-                              Divider(color: AppColors.border.withOpacity(0.6)),
-                              const SizedBox(height: AppSpacing.md),
-                              _buildSecurityNotice(context),
-                            ],
+                            ),
                           ),
-                        ),
+                          const SizedBox(height: AppSpacing.xl),
+                          _buildFooter(context),
+                        ],
                       ),
-                      const SizedBox(height: AppSpacing.xl),
-                      _buildFooter(context),
-                    ],
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -432,4 +502,3 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 }
-

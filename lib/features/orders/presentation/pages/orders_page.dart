@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
-
-import 'package:intl/intl.dart' as intl;
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_spacing.dart';
-import '../../../../core/data/mock_data.dart' as data;
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/badge_chip.dart';
 import '../../../../core/widgets/section_header.dart';
+import '../../data/models/response/order_response.dart';
 import '../../domain/entities/order.dart';
-import 'add_order_page.dart';
+import '../../logic/cubit/orders_cubit.dart';
+import '../../logic/states/orders_state.dart';
+import 'add_order_wrapper_page.dart';
 import 'order_details_page.dart';
 
 class OrdersPage extends StatefulWidget {
@@ -20,35 +21,66 @@ class OrdersPage extends StatefulWidget {
 }
 
 class _OrdersPageState extends State<OrdersPage> {
-  final List<Order> _orders = data.recentOrders;
-  Order? _selectedOrder;
+  OrderResponse? _selectedOrder;
 
-  void _openAddOrder() {
-    Navigator.of(context).push(
+  void _openAddOrder() async {
+    final result = await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (routeContext) => Directionality(
           textDirection: TextDirection.rtl,
-          child: AddOrderPage(
-            onBack: () => Navigator.of(routeContext).pop(),
+          child: AddOrderWrapperPage(
+            onBack: () => Navigator.of(routeContext).pop(true),
           ),
         ),
       ),
     );
+    // Refresh orders list after returning from add order page
+    if (mounted && result == true) {
+      context.read<OrdersCubit>().getOrders();
+    }
   }
 
-  void _openOrderDetails(Order order) {
+  void _openOrderDetails(OrderResponse orderResponse) {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => Directionality(
           textDirection: TextDirection.rtl,
-          child: OrderDetailsPage(order: order),
+          child: OrderDetailsPage(orderResponse: orderResponse),
         ),
       ),
     );
   }
 
-  void _showStatusSheet(Order order) async {
-    final newStatus = await showModalBottomSheet<OrderStatus>(
+  OrderStatus _parseOrderStatus(String status) {
+    return switch (status) {
+      'newOrder' => OrderStatus.newOrder,
+      'inProgress' => OrderStatus.inProgress,
+      'completed' => OrderStatus.completed,
+      'cancelled' => OrderStatus.cancelled,
+      _ => OrderStatus.newOrder,
+    };
+  }
+
+  PaymentStatus _parsePaymentStatus(String status) {
+    return switch (status) {
+      'pending' => PaymentStatus.pending,
+      'paid' => PaymentStatus.paid,
+      'refunded' => PaymentStatus.refunded,
+      _ => PaymentStatus.pending,
+    };
+  }
+
+  ShippingStatus _parseShippingStatus(String status) {
+    return switch (status) {
+      'preparing' => ShippingStatus.preparing,
+      'inTransit' => ShippingStatus.inTransit,
+      'delivered' => ShippingStatus.delivered,
+      _ => ShippingStatus.preparing,
+    };
+  }
+
+  void _showStatusSheet(OrderResponse order) async {
+    final newStatus = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
@@ -64,8 +96,13 @@ class _OrdersPageState extends State<OrdersPage> {
                   title: 'تحديث حالة الطلب',
                   subtitle: 'اختر الحالة الجديدة للطلب',
                 ),
-                for (final status in OrderStatus.values)
-                  RadioListTile<OrderStatus>(
+                for (final status in [
+                  'newOrder',
+                  'inProgress',
+                  'completed',
+                  'cancelled'
+                ])
+                  RadioListTile<String>(
                     value: status,
                     groupValue: order.status,
                     onChanged: (value) => Navigator.of(ctx).pop(value),
@@ -78,83 +115,86 @@ class _OrdersPageState extends State<OrdersPage> {
       },
     );
 
-    if (newStatus != null) {
-      if (!mounted) return;
-      setState(() {
-        final index = _orders.indexOf(order);
-        if (index != -1) {
-          final existing = _orders[index];
-          _orders[index] = Order(
-            id: existing.id,
-            customerName: existing.customerName,
-            total: existing.total,
-            status: newStatus,
-            date: existing.date,
-            items: existing.items,
-            paymentStatus: existing.paymentStatus,
-            shippingStatus: existing.shippingStatus,
-          );
-          if (_selectedOrder?.id == existing.id) {
-            _selectedOrder = _orders[index];
-          }
-        }
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تم تحديث حالة الطلب ${order.id}.')),
-      );
-    }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    if (_orders.isNotEmpty) {
-      _selectedOrder = _orders.first;
+    if (newStatus != null && newStatus != order.status) {
+      context.read<OrdersCubit>().updateOrderStatus(order.id, newStatus);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isWide = constraints.maxWidth > 840;
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SectionHeader(
-                title: 'الطلبات',
-                subtitle: 'متابعة الطلبات الأخيرة وإدارتها',
-                trailing: FilledButton.icon(
-              onPressed: _openAddOrder,
-                  icon: const Icon(Icons.add),
-                  label: const Text('طلب جديد'),
+    return BlocBuilder<OrdersCubit, OrdersState>(
+      builder: (context, state) {
+        return state.when(
+          initial: () => const Center(child: CircularProgressIndicator()),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          loaded: (ordersList) {
+            final orders = ordersList.orders;
+            if (_selectedOrder == null && orders.isNotEmpty) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                setState(() => _selectedOrder = orders.first);
+              });
+            }
+
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                final isWide = constraints.maxWidth > 840;
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SectionHeader(
+                        title: 'الطلبات',
+                        subtitle: 'متابعة الطلبات الأخيرة وإدارتها',
+                        trailing: FilledButton.icon(
+                          onPressed: _openAddOrder,
+                          icon: const Icon(Icons.add),
+                          label: const Text('طلب جديد'),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      if (isWide)
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(child: _buildOrdersList(context, orders)),
+                            const SizedBox(width: AppSpacing.lg),
+                            Expanded(
+                                child: _buildOrderDetails(
+                                    context, _selectedOrder)),
+                          ],
+                        )
+                      else ...[
+                        _buildOrdersList(context, orders),
+                        const SizedBox(height: AppSpacing.lg),
+                        _buildOrderDetails(context, _selectedOrder),
+                      ],
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+          orderLoaded: (order) =>
+              const Center(child: CircularProgressIndicator()),
+          error: (message) => Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text('خطأ: $message'),
+                ElevatedButton(
+                  onPressed: () => context.read<OrdersCubit>().getOrders(),
+                  child: const Text('إعادة المحاولة'),
                 ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              if (isWide)
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: _buildOrdersList(context)),
-                    const SizedBox(width: AppSpacing.lg),
-                    Expanded(child: _buildOrderDetails(context, _selectedOrder)),
-                  ],
-                )
-              else ...[
-                _buildOrdersList(context),
-                const SizedBox(height: AppSpacing.lg),
-                _buildOrderDetails(context, _selectedOrder),
               ],
-            ],
+            ),
           ),
         );
       },
     );
   }
 
-  Widget _buildOrdersList(BuildContext context) {
+  Widget _buildOrdersList(BuildContext context, List<OrderResponse> orders) {
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -163,90 +203,102 @@ class _OrdersPageState extends State<OrdersPage> {
             title: 'الطلبات الأخيرة',
             subtitle: 'أحدث العمليات خلال الأيام الماضية',
           ),
-          for (final order in _orders)
-            GestureDetector(
-              onTap: () {
-                setState(() => _selectedOrder = order);
-                final isWide = MediaQuery.of(context).size.width > 840;
-                if (!isWide) {
-                  _openOrderDetails(order);
-                }
-              },
-              child: Container(
-                margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-                padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: order == _selectedOrder
-                      ? AppColors.primary.withOpacity(0.12)
-                      : AppColors.surfaceSecondary,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                  border: Border.all(
+          if (orders.isEmpty)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(AppSpacing.xl),
+                child: Text('لا توجد طلبات'),
+              ),
+            )
+          else
+            for (final order in orders)
+              GestureDetector(
+                onTap: () {
+                  setState(() => _selectedOrder = order);
+                  final isWide = MediaQuery.of(context).size.width > 840;
+                  if (!isWide) {
+                    _openOrderDetails(order);
+                  }
+                },
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  decoration: BoxDecoration(
                     color: order == _selectedOrder
-                        ? AppColors.primary.withOpacity(0.35)
-                        : Colors.transparent,
+                        ? AppColors.primary.withOpacity(0.12)
+                        : AppColors.surfaceSecondary,
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    border: Border.all(
+                      color: order == _selectedOrder
+                          ? AppColors.primary.withOpacity(0.35)
+                          : Colors.transparent,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            '#${order.id}',
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          BadgeChip(
+                            label: _statusLabel(order.status),
+                            tone: switch (order.status) {
+                              'newOrder' => BadgeTone.info,
+                              'inProgress' => BadgeTone.warning,
+                              'completed' => BadgeTone.success,
+                              'cancelled' => BadgeTone.danger,
+                              _ => BadgeTone.neutral,
+                            },
+                          ),
+                          const Spacer(),
+                          Text(
+                            'ج${order.total.toStringAsFixed(2)}',
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        '${order.customerName} • ج${order.total.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                            color: AppColors.mutedForeground, fontSize: 12),
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Row(
+                        children: [
+                          const Icon(Icons.calendar_today,
+                              size: 14, color: AppColors.mutedForeground),
+                          const SizedBox(width: AppSpacing.xs),
+                          Text(
+                            order.date,
+                            style: const TextStyle(
+                                color: AppColors.mutedForeground, fontSize: 12),
+                          ),
+                          const Spacer(),
+                          BadgeChip(
+                            label: _paymentLabel(order.paymentStatus),
+                            tone: order.paymentStatus == 'paid'
+                                ? BadgeTone.success
+                                : order.paymentStatus == 'pending'
+                                    ? BadgeTone.warning
+                                    : BadgeTone.info,
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          order.id,
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        BadgeChip(
-                          label: _statusLabel(order.status),
-                          tone: switch (order.status) {
-                            OrderStatus.newOrder => BadgeTone.info,
-                            OrderStatus.inProgress => BadgeTone.warning,
-                            OrderStatus.completed => BadgeTone.success,
-                            OrderStatus.cancelled => BadgeTone.danger,
-                          },
-                        ),
-                        const Spacer(),
-                        Text(
-                          'ج${order.total.toStringAsFixed(2)}',
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      '${order.customerName} • ${data.currencyFormatter.format(order.total)}',
-                      style: const TextStyle(color: AppColors.mutedForeground, fontSize: 12),
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Row(
-                      children: [
-                        const Icon(Icons.calendar_today, size: 14, color: AppColors.mutedForeground),
-                        const SizedBox(width: AppSpacing.xs),
-                        Text(
-                          intl.DateFormat('EEE d MMM', 'ar').format(order.date),
-                          style: const TextStyle(color: AppColors.mutedForeground, fontSize: 12),
-                        ),
-                        const Spacer(),
-                        BadgeChip(
-                          label: _paymentLabel(order.paymentStatus),
-                          tone: order.paymentStatus == PaymentStatus.paid
-                              ? BadgeTone.success
-                              : order.paymentStatus == PaymentStatus.pending
-                                  ? BadgeTone.warning
-                                  : BadgeTone.info,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
               ),
-            ),
         ],
       ),
     );
   }
 
-  Widget _buildOrderDetails(BuildContext context, Order? order) {
+  Widget _buildOrderDetails(BuildContext context, OrderResponse? order) {
     if (order == null) {
       return AppCard(
         child: SizedBox(
@@ -266,20 +318,21 @@ class _OrdersPageState extends State<OrdersPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SectionHeader(
-            title: 'تفاصيل ${order.id}',
+            title: 'تفاصيل #${order.id}',
             subtitle: 'معلومات الطلب وسير العمل',
             trailing: BadgeChip(
               label: _shippingLabel(order.shippingStatus),
               tone: switch (order.shippingStatus) {
-                ShippingStatus.preparing => BadgeTone.info,
-                ShippingStatus.inTransit => BadgeTone.warning,
-                ShippingStatus.delivered => BadgeTone.success,
+                'preparing' => BadgeTone.info,
+                'inTransit' => BadgeTone.warning,
+                'delivered' => BadgeTone.success,
+                _ => BadgeTone.neutral,
               },
             ),
           ),
           const SizedBox(height: AppSpacing.md),
           _infoRow('العميل', order.customerName),
-          _infoRow('المجموع', data.currencyFormatter.format(order.total)),
+          _infoRow('المجموع', 'ج${order.total.toStringAsFixed(2)}'),
           _infoRow(
             'طريقة الدفع',
             _paymentLabel(order.paymentStatus),
@@ -293,9 +346,10 @@ class _OrdersPageState extends State<OrdersPage> {
           for (final item in order.items)
             ListTile(
               contentPadding: EdgeInsets.zero,
-              title: Text(item.name),
+              title: Text(item.name ?? ''),
               subtitle: Text('${item.quantity} قطعة'),
-              trailing: Text('ج${(item.price * item.quantity).toStringAsFixed(2)}'),
+              trailing:
+                  Text('ج${(item.price * item.quantity).toStringAsFixed(2)}'),
             ),
           const Divider(),
           ListTile(
@@ -304,9 +358,10 @@ class _OrdersPageState extends State<OrdersPage> {
             subtitle: Text(_shippingTimelineSubtitle(order.shippingStatus)),
             trailing: Icon(
               switch (order.shippingStatus) {
-                ShippingStatus.preparing => Icons.local_shipping_outlined,
-                ShippingStatus.inTransit => Icons.airport_shuttle_outlined,
-                ShippingStatus.delivered => Icons.check_circle_outline,
+                'preparing' => Icons.local_shipping_outlined,
+                'inTransit' => Icons.airport_shuttle_outlined,
+                'delivered' => Icons.check_circle_outline,
+                _ => Icons.local_shipping_outlined,
               },
             ),
           ),
@@ -317,7 +372,8 @@ class _OrdersPageState extends State<OrdersPage> {
                 child: OutlinedButton.icon(
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('ميزة طباعة الفاتورة قادمة قريباً')),
+                      const SnackBar(
+                          content: Text('ميزة طباعة الفاتورة قادمة قريباً')),
                     );
                   },
                   icon: const Icon(Icons.print_outlined),
@@ -363,37 +419,40 @@ class _OrdersPageState extends State<OrdersPage> {
     );
   }
 
-  String _statusLabel(OrderStatus status) {
+  String _statusLabel(String status) {
     return switch (status) {
-      OrderStatus.newOrder => 'جديد',
-      OrderStatus.inProgress => 'جاري التنفيذ',
-      OrderStatus.completed => 'مكتمل',
-      OrderStatus.cancelled => 'ملغي',
+      'newOrder' => 'جديد',
+      'inProgress' => 'جاري التنفيذ',
+      'completed' => 'مكتمل',
+      'cancelled' => 'ملغي',
+      _ => status,
     };
   }
 
-  String _paymentLabel(PaymentStatus status) {
+  String _paymentLabel(String status) {
     return switch (status) {
-      PaymentStatus.pending => 'بانتظار الدفع',
-      PaymentStatus.paid => 'مدفوع',
-      PaymentStatus.refunded => 'مسترد',
+      'pending' => 'بانتظار الدفع',
+      'paid' => 'مدفوع',
+      'refunded' => 'مسترد',
+      _ => status,
     };
   }
 
-  String _shippingLabel(ShippingStatus status) {
+  String _shippingLabel(String status) {
     return switch (status) {
-      ShippingStatus.preparing => 'قيد التجهيز',
-      ShippingStatus.inTransit => 'في الطريق',
-      ShippingStatus.delivered => 'تم التسليم',
+      'preparing' => 'قيد التجهيز',
+      'inTransit' => 'في الطريق',
+      'delivered' => 'تم التسليم',
+      _ => status,
     };
   }
 
-  String _shippingTimelineSubtitle(ShippingStatus status) {
+  String _shippingTimelineSubtitle(String status) {
     return switch (status) {
-      ShippingStatus.preparing => 'يتم تجهيز الطلب للشحن',
-      ShippingStatus.inTransit => 'الطلب خرج للتسليم',
-      ShippingStatus.delivered => 'تم تسليم الطلب إلى العميل',
+      'preparing' => 'يتم تجهيز الطلب للشحن',
+      'inTransit' => 'الطلب خرج للتسليم',
+      'delivered' => 'تم تسليم الطلب إلى العميل',
+      _ => status,
     };
   }
 }
-

@@ -1,115 +1,36 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart' as intl;
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/badge_chip.dart';
 import '../../../../core/widgets/section_header.dart';
+import '../../data/models/request/create_shipping_zone_request.dart';
+import '../../data/models/request/update_shipping_zone_request.dart';
+import '../../data/models/response/shipping_zone_response.dart';
+import '../../data/models/response/tracking_update_response.dart';
+import '../../logic/cubit/shipping_cubit.dart';
+import '../../logic/states/shipping_state.dart';
 
-class ShippingPage extends StatefulWidget {
+class ShippingPage extends StatelessWidget {
   const ShippingPage({super.key});
 
-  @override
-  State<ShippingPage> createState() => _ShippingPageState();
-}
-
-class _ShippingPageState extends State<ShippingPage> {
-  late List<_ShippingZone> _zones;
-  late List<_TrackingUpdate> _updates;
-
-  @override
-  void initState() {
-    super.initState();
-    _zones = [
-      const _ShippingZone(
-        name: 'القاهرة',
-        deliveryTime: '1-2 أيام',
-        cost: 'ج25',
-        coverage: 'جميع الأحياء داخل القاهرة الكبرى',
-      ),
-      const _ShippingZone(
-        name: 'الإسكندرية',
-        deliveryTime: '2-3 أيام',
-        cost: 'ج35',
-        coverage: 'الإسكندرية والبحيرة ومطروح',
-      ),
-      const _ShippingZone(
-        name: 'الصعيد',
-        deliveryTime: '3-5 أيام',
-        cost: 'ج45',
-        coverage: 'المنيا، أسيوط، سوهاج، قنا، الأقصر، أسوان',
-      ),
-    ];
-    _updates = [
-      const _TrackingUpdate(
-        orderId: '#1231',
-        status: 'تم التسليم',
-        time: 'اليوم - 11:30 صباحاً',
-        tone: BadgeTone.success,
-      ),
-      const _TrackingUpdate(
-        orderId: '#1230',
-        status: 'في الطريق',
-        time: 'أمس - 04:12 عصراً',
-        tone: BadgeTone.warning,
-      ),
-      const _TrackingUpdate(
-        orderId: '#1229',
-        status: 'قيد التجهيز',
-        time: 'أمس - 09:40 صباحاً',
-        tone: BadgeTone.info,
-      ),
-    ];
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SectionHeader(
-            title: 'إدارة الشحن',
-            subtitle: 'تتبع الطلبات وقم بإدارة مناطق وأسعار الشحن',
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final isWide = constraints.maxWidth > 820;
-              if (isWide) {
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: _buildZonesCard()),
-                    const SizedBox(width: AppSpacing.lg),
-                    Expanded(child: _buildTrackingCard()),
-                  ],
-                );
-              }
-              return Column(
-                children: [
-                  _buildZonesCard(),
-                  const SizedBox(height: AppSpacing.lg),
-                  _buildTrackingCard(),
-                ],
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _openZoneForm({int? zoneIndex}) async {
-    final int? index = zoneIndex;
-    final bool isEdit = index != null;
-    final zone = index != null ? _zones[index] : null;
+  Future<void> _openZoneForm(
+    BuildContext context,
+    ShippingCubit cubit, {
+    ShippingZoneResponse? zone,
+  }) async {
+    final isEdit = zone != null;
 
     final nameController = TextEditingController(text: zone?.name ?? '');
-    final timeController = TextEditingController(text: zone?.deliveryTime ?? '');
-    final costController = TextEditingController(text: zone?.cost ?? '');
-    final coverageController = TextEditingController(text: zone?.coverage ?? '');
+    final timeController =
+        TextEditingController(text: zone?.deliveryTime ?? '');
+    final costController =
+        TextEditingController(text: zone != null ? zone.cost.toString() : '');
+    final coverageController =
+        TextEditingController(text: zone?.coverage ?? '');
     final formKey = GlobalKey<FormState>();
 
     final confirmed = await showModalBottomSheet<bool>(
@@ -141,31 +62,50 @@ class _ShippingPageState extends State<ShippingPage> {
                     const SizedBox(height: AppSpacing.lg),
                     TextFormField(
                       controller: nameController,
-                      decoration: const InputDecoration(labelText: 'اسم المنطقة'),
+                      decoration:
+                          const InputDecoration(labelText: 'اسم المنطقة'),
                       validator: (value) =>
-                          value == null || value.trim().isEmpty ? 'اسم المنطقة مطلوب' : null,
+                          value == null || value.trim().isEmpty
+                              ? 'اسم المنطقة مطلوب'
+                              : null,
                     ),
                     const SizedBox(height: AppSpacing.md),
                     TextFormField(
                       controller: timeController,
-                      decoration: const InputDecoration(labelText: 'مدة التوصيل'),
+                      decoration:
+                          const InputDecoration(labelText: 'مدة التوصيل'),
                       validator: (value) =>
-                          value == null || value.trim().isEmpty ? 'مدة التوصيل مطلوبة' : null,
+                          value == null || value.trim().isEmpty
+                              ? 'مدة التوصيل مطلوبة'
+                              : null,
                     ),
                     const SizedBox(height: AppSpacing.md),
                     TextFormField(
                       controller: costController,
-                      decoration: const InputDecoration(labelText: 'تكلفة الشحن'),
-                      validator: (value) =>
-                          value == null || value.trim().isEmpty ? 'تكلفة الشحن مطلوبة' : null,
+                      decoration:
+                          const InputDecoration(labelText: 'تكلفة الشحن'),
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'تكلفة الشحن مطلوبة';
+                        }
+                        final parsed = double.tryParse(value);
+                        if (parsed == null || parsed < 0) {
+                          return 'يرجى إدخال رقم صحيح';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: AppSpacing.md),
                     TextFormField(
                       controller: coverageController,
                       maxLines: 2,
-                      decoration: const InputDecoration(labelText: 'نطاق التغطية'),
+                      decoration:
+                          const InputDecoration(labelText: 'نطاق التغطية'),
                       validator: (value) =>
-                          value == null || value.trim().isEmpty ? 'نطاق التغطية مطلوب' : null,
+                          value == null || value.trim().isEmpty
+                              ? 'نطاق التغطية مطلوب'
+                              : null,
                     ),
                     const SizedBox(height: AppSpacing.lg),
                     SizedBox(
@@ -189,29 +129,146 @@ class _ShippingPageState extends State<ShippingPage> {
     );
 
     if (confirmed == true) {
-      if (!mounted) return;
-      final newZone = _ShippingZone(
-        name: nameController.text.trim(),
-        deliveryTime: timeController.text.trim(),
-        cost: costController.text.trim(),
-        coverage: coverageController.text.trim(),
-      );
-      setState(() {
-        if (index != null) {
-          _zones[index] = newZone;
-        } else {
-          _zones.add(newZone);
-        }
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(isEdit ? 'تم تحديث المنطقة بنجاح.' : 'تمت إضافة المنطقة الجديدة.'),
-        ),
-      );
+      if (!context.mounted) return;
+      final cost = double.parse(costController.text.trim());
+
+      if (isEdit) {
+        final request = UpdateShippingZoneRequest(
+          name: nameController.text.trim(),
+          deliveryTime: timeController.text.trim(),
+          cost: cost,
+          coverage: coverageController.text.trim(),
+        );
+        cubit.updateShippingZone(zone.id, request);
+      } else {
+        final request = CreateShippingZoneRequest(
+          name: nameController.text.trim(),
+          deliveryTime: timeController.text.trim(),
+          cost: cost,
+          coverage: coverageController.text.trim(),
+        );
+        cubit.createShippingZone(request);
+      }
     }
   }
 
-  Widget _buildZonesCard() {
+  BadgeTone _getStatusTone(String status) {
+    return switch (status.toLowerCase()) {
+      'تم التسليم' || 'delivered' => BadgeTone.success,
+      'في الطريق' || 'in transit' || 'intransit' => BadgeTone.warning,
+      'قيد التجهيز' || 'preparing' => BadgeTone.info,
+      _ => BadgeTone.info,
+    };
+  }
+
+  String _formatTime(String timeString) {
+    try {
+      final date = DateTime.parse(timeString);
+      final now = DateTime.now();
+      final difference = now.difference(date);
+
+      if (difference.inMinutes < 1) {
+        return 'الآن';
+      } else if (difference.inMinutes < 60) {
+        return 'منذ ${difference.inMinutes} دقيقة';
+      } else if (difference.inHours < 24) {
+        return 'منذ ${difference.inHours} ساعة';
+      } else if (difference.inDays == 1) {
+        return 'أمس';
+      } else if (difference.inDays < 7) {
+        return 'منذ ${difference.inDays} أيام';
+      } else {
+        return intl.DateFormat('d MMMM yyyy', 'ar').format(date);
+      }
+    } catch (e) {
+      return timeString;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocConsumer<ShippingCubit, ShippingState>(
+      listener: (context, state) {
+        state.whenOrNull(
+          error: (message) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(message)),
+            );
+          },
+        );
+      },
+      builder: (context, state) {
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SectionHeader(
+                title: 'إدارة الشحن',
+                subtitle: 'تتبع الطلبات وقم بإدارة مناطق وأسعار الشحن',
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              state.when(
+                initial: () => const Center(child: CircularProgressIndicator()),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                loaded: (zonesList, trackingUpdates) {
+                  return LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isWide = constraints.maxWidth > 820;
+                      if (isWide) {
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: _buildZonesCard(context, zonesList.zones),
+                            ),
+                            const SizedBox(width: AppSpacing.lg),
+                            Expanded(
+                              child: _buildTrackingCard(
+                                  trackingUpdates?.updates ?? []),
+                            ),
+                          ],
+                        );
+                      }
+                      return Column(
+                        children: [
+                          _buildZonesCard(context, zonesList.zones),
+                          const SizedBox(height: AppSpacing.lg),
+                          _buildTrackingCard(trackingUpdates?.updates ?? []),
+                        ],
+                      );
+                    },
+                  );
+                },
+                error: (message) => AppCard(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.xl),
+                      child: Column(
+                        children: [
+                          const Icon(Icons.error_outline,
+                              size: 48, color: AppColors.danger),
+                          const SizedBox(height: AppSpacing.md),
+                          Text(
+                            message,
+                            style: const TextStyle(color: AppColors.danger),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildZonesCard(
+      BuildContext context, List<ShippingZoneResponse> zones) {
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -219,47 +276,87 @@ class _ShippingPageState extends State<ShippingPage> {
           SectionHeader(
             title: 'مناطق الشحن',
             trailing: TextButton.icon(
-              onPressed: () => _openZoneForm(),
+              onPressed: () => _openZoneForm(
+                context,
+                context.read<ShippingCubit>(),
+              ),
               icon: const Icon(Icons.add),
               label: const Text('إضافة منطقة'),
             ),
           ),
-          for (final zone in _zones) ...[
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(zone.name, style: const TextStyle(fontWeight: FontWeight.w700)),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    zone.coverage,
-                    style: const TextStyle(color: AppColors.mutedForeground, fontSize: 12),
+          if (zones.isEmpty)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(AppSpacing.xl),
+                child: Text(
+                  'لا توجد مناطق شحن',
+                  style: TextStyle(
+                    color: AppColors.mutedForeground,
+                    fontSize: 16,
                   ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Row(
-                    children: [
-                      BadgeChip(label: zone.deliveryTime, tone: BadgeTone.info),
-                      const SizedBox(width: AppSpacing.sm),
-                      BadgeChip(label: zone.cost, tone: BadgeTone.success),
-                    ],
-                  ),
-                ],
+                ),
               ),
-              trailing: IconButton(
-                tooltip: 'تعديل المنطقة',
-                onPressed: () => _openZoneForm(zoneIndex: _zones.indexOf(zone)),
-                icon: const Icon(Icons.edit_outlined),
+            )
+          else
+            for (final zone in zones) ...[
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(zone.name,
+                    style: const TextStyle(fontWeight: FontWeight.w700)),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      zone.coverage,
+                      style: const TextStyle(
+                          color: AppColors.mutedForeground, fontSize: 12),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Row(
+                      children: [
+                        BadgeChip(
+                            label: zone.deliveryTime, tone: BadgeTone.info),
+                        const SizedBox(width: AppSpacing.sm),
+                        BadgeChip(
+                            label: 'ج${zone.cost}', tone: BadgeTone.success),
+                      ],
+                    ),
+                  ],
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      tooltip: 'تعديل المنطقة',
+                      onPressed: () => _openZoneForm(
+                        context,
+                        context.read<ShippingCubit>(),
+                        zone: zone,
+                      ),
+                      icon: const Icon(Icons.edit_outlined),
+                    ),
+                    IconButton(
+                      tooltip: 'حذف المنطقة',
+                      onPressed: () {
+                        context
+                            .read<ShippingCubit>()
+                            .deleteShippingZone(zone.id);
+                      },
+                      icon: const Icon(Icons.delete_outlined),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            if (zone != _zones.last) Divider(color: AppColors.border.withOpacity(0.6)),
-          ],
+              if (zone != zones.last)
+                Divider(color: AppColors.border.withOpacity(0.6)),
+            ],
         ],
       ),
     );
   }
 
-  Widget _buildTrackingCard() {
+  Widget _buildTrackingCard(List<TrackingUpdateResponse> updates) {
     return AppCard(
       child: Column(
         children: [
@@ -267,60 +364,57 @@ class _ShippingPageState extends State<ShippingPage> {
             title: 'تتبع الشحنات',
             subtitle: 'آخر التحديثات لحالات الشحن',
           ),
-          for (final update in _updates) ...[
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const CircleAvatar(
-                backgroundColor: AppColors.surfaceSecondary,
-                child: Icon(Icons.local_shipping_outlined, color: Colors.white),
-              ),
-              title: Text(update.orderId, style: const TextStyle(fontWeight: FontWeight.w600)),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    update.time,
-                    style: const TextStyle(color: AppColors.mutedForeground, fontSize: 12),
+          if (updates.isEmpty)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(AppSpacing.xl),
+                child: Text(
+                  'لا توجد تحديثات',
+                  style: TextStyle(
+                    color: AppColors.mutedForeground,
+                    fontSize: 16,
                   ),
-                ],
+                ),
               ),
-              trailing: BadgeChip(label: update.status, tone: update.tone),
-            ),
-            if (update != _updates.last) Divider(color: AppColors.border.withOpacity(0.7)),
-          ],
+            )
+          else
+            for (final update in updates) ...[
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const CircleAvatar(
+                  backgroundColor: AppColors.surfaceSecondary,
+                  child:
+                      Icon(Icons.local_shipping_outlined, color: Colors.white),
+                ),
+                title: Text(update.orderId,
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      _formatTime(update.time),
+                      style: const TextStyle(
+                          color: AppColors.mutedForeground, fontSize: 12),
+                    ),
+                    if (update.location != null) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        update.location!,
+                        style: const TextStyle(
+                            color: AppColors.mutedForeground, fontSize: 12),
+                      ),
+                    ],
+                  ],
+                ),
+                trailing: BadgeChip(
+                    label: update.status, tone: _getStatusTone(update.status)),
+              ),
+              if (update != updates.last)
+                Divider(color: AppColors.border.withOpacity(0.7)),
+            ],
         ],
       ),
     );
   }
 }
-
-
-class _ShippingZone {
-  const _ShippingZone({
-    required this.name,
-    required this.deliveryTime,
-    required this.cost,
-    required this.coverage,
-  });
-
-  final String name;
-  final String deliveryTime;
-  final String cost;
-  final String coverage;
-}
-
-class _TrackingUpdate {
-  const _TrackingUpdate({
-    required this.orderId,
-    required this.status,
-    required this.time,
-    required this.tone,
-  });
-
-  final String orderId;
-  final String status;
-  final String time;
-  final BadgeTone tone;
-}
-
