@@ -27,10 +27,7 @@ class AnmkaStoreApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         theme: AppTheme.dark,
         locale: const Locale('ar'),
-        supportedLocales: const [
-          Locale('ar'),
-          Locale('en'),
-        ],
+        supportedLocales: const [Locale('ar'), Locale('en')],
         localizationsDelegates: const [
           GlobalMaterialLocalizations.delegate,
           GlobalWidgetsLocalizations.delegate,
