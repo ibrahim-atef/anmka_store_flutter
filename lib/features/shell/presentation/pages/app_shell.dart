@@ -22,7 +22,6 @@ import '../../../products/logic/cubit/products_cubit.dart';
 import '../../../notifications/logic/cubit/notifications_cubit.dart';
 import '../../../notifications/logic/states/notifications_state.dart';
 import '../../../notifications/presentation/pages/notifications_page.dart';
-import '../../../orders/presentation/pages/add_order_page.dart';
 import '../../../orders/presentation/pages/orders_page.dart';
 import '../../../products/presentation/pages/add_product_page.dart';
 import '../../../products/presentation/pages/products_page.dart';
@@ -121,7 +120,7 @@ class _AuthenticatedHome extends StatelessWidget {
     switch (nav.currentTab) {
       case AppTab.dashboard:
         body = BlocProvider(
-          create: (context) => getIt<DashboardCubit>()..getStats(),
+          create: (context) => getIt<DashboardCubit>()..loadDashboard(),
           child: DashboardPage(userName: userName),
         );
       case AppTab.products:

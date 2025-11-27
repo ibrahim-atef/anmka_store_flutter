@@ -1,29 +1,27 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_spacing.dart';
-import '../../../../core/data/mock_data.dart' as data;
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/badge_chip.dart';
 import '../../../../core/widgets/section_header.dart';
+import '../../data/models/response/dashboard_stats_response.dart';
+import '../../domain/entities/dashboard_models.dart';
 import '../../logic/cubit/dashboard_cubit.dart';
 import '../../logic/states/dashboard_state.dart';
 
-enum SalesPeriod { daily, weekly, monthly }
-
-class DashboardPage extends StatefulWidget {
+class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key, required this.userName});
 
   final String userName;
-
-  @override
-  State<DashboardPage> createState() => _DashboardPageState();
-}
-
-class _DashboardPageState extends State<DashboardPage> {
-  SalesPeriod _period = SalesPeriod.daily;
+  static final NumberFormat _currencyFormatter = NumberFormat.currency(
+    locale: 'ar_EG',
+    symbol: 'ج',
+    decimalDigits: 0,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -32,22 +30,29 @@ class _DashboardPageState extends State<DashboardPage> {
         return state.when(
           initial: () => const Center(child: CircularProgressIndicator()),
           loading: () => const Center(child: CircularProgressIndicator()),
-          loaded: (stats) => SingleChildScrollView(
+          loaded: (stats, sales, period, topProducts, traffic, activities,
+                  isSalesLoading) =>
+              SingleChildScrollView(
             padding: const EdgeInsets.all(AppSpacing.lg),
             child: Column(
               children: [
-                _buildWelcomeHero(context),
+                _buildWelcomeHero(context, stats),
                 const SizedBox(height: AppSpacing.lg),
-                _buildStatsGrid(),
+                _buildStatsGrid(stats),
                 const SizedBox(height: AppSpacing.lg),
-                _buildSalesChart(context),
-                const SizedBox(height: AppSpacing.lg),
-                _buildTwoColumnSection(
-                  left: _buildTopProducts(),
-                  right: _buildTrafficSources(),
+                _buildSalesChart(
+                  context,
+                  sales: sales,
+                  period: period,
+                  isLoading: isSalesLoading,
                 ),
                 const SizedBox(height: AppSpacing.lg),
-                _buildRecentActivity(),
+                _buildTwoColumnSection(
+                  left: _buildTopProducts(topProducts),
+                  right: _buildTrafficSources(traffic),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                _buildRecentActivity(activities),
               ],
             ),
           ),
@@ -57,7 +62,8 @@ class _DashboardPageState extends State<DashboardPage> {
               children: [
                 Text('خطأ: $message'),
                 ElevatedButton(
-                  onPressed: () => context.read<DashboardCubit>().getStats(),
+                  onPressed: () =>
+                      context.read<DashboardCubit>().loadDashboard(),
                   child: const Text('إعادة المحاولة'),
                 ),
               ],
@@ -68,7 +74,7 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildWelcomeHero(BuildContext context) {
+  Widget _buildWelcomeHero(BuildContext context, DashboardStatsResponse stats) {
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.xl),
       child: Container(
@@ -81,7 +87,7 @@ class _DashboardPageState extends State<DashboardPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'مرحباً ${widget.userName}!',
+              'مرحباً $userName!',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -97,16 +103,21 @@ class _DashboardPageState extends State<DashboardPage> {
             Row(
               children: [
                 Text(
-                  'ج8,502',
+                  _currencyFormatter
+                      .format((stats.totalSales ?? stats.revenue) ?? 0),
                   style: Theme.of(context).textTheme.displaySmall?.copyWith(
                         fontWeight: FontWeight.w800,
                       ),
                 ),
                 const SizedBox(width: AppSpacing.md),
-                const BadgeChip(
-                  label: '+12.5%',
-                  tone: BadgeTone.success,
-                  icon: Icons.trending_up,
+                BadgeChip(
+                  label: _formatChange(stats.salesChange ?? stats.growth),
+                  tone: (stats.salesChange ?? stats.growth ?? 0) >= 0
+                      ? BadgeTone.success
+                      : BadgeTone.danger,
+                  icon: (stats.salesChange ?? stats.growth ?? 0) >= 0
+                      ? Icons.trending_up
+                      : Icons.trending_down,
                 ),
               ],
             ),
@@ -116,89 +127,89 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildStatsGrid() {
-    return BlocBuilder<DashboardCubit, DashboardState>(
-      builder: (context, state) {
-        final stats = state.maybeWhen(
-          loaded: (stats) => stats,
-          orElse: () => null,
-        );
+  Widget _buildStatsGrid(DashboardStatsResponse stats) {
+    final cards = [
+      _StatTileData(
+        icon: 'money',
+        title: 'إجمالي المبيعات',
+        value: _currencyFormatter.format(stats.totalSales ?? 0),
+        change: _formatChange(stats.salesChange ?? stats.growth),
+        changeIsPositive: (stats.salesChange ?? stats.growth ?? 0) >= 0,
+      ),
+      _StatTileData(
+        icon: 'cart',
+        title: 'عدد الطلبات',
+        value: '${stats.totalOrders ?? stats.newOrders ?? 0}',
+        change: _formatChange(stats.ordersChange),
+        changeIsPositive: (stats.ordersChange ?? 0) >= 0,
+      ),
+      _StatTileData(
+        icon: 'users',
+        title: 'عدد العملاء',
+        value: '${stats.totalCustomers ?? stats.newCustomers ?? 0}',
+        change: _formatChange(stats.customersChange),
+        changeIsPositive: (stats.customersChange ?? 0) >= 0,
+      ),
+      _StatTileData(
+        icon: 'inventory',
+        title: 'عدد المنتجات',
+        value: '${stats.totalProducts ?? 0}',
+        change: stats.outOfStockProducts != null
+            ? '${stats.outOfStockProducts} منتجات منخفضة'
+            : '',
+        changeIsPositive: false,
+      ),
+    ];
 
-        if (stats == null) {
-          return const SizedBox.shrink();
-        }
+    final chunks = List.generate(
+      (cards.length / 2).ceil(),
+      (index) => cards.skip(index * 2).take(2).toList(),
+    );
 
-        // Create stats from API data
-        final dashboardStats = [
-          data.DashboardStat(
-            icon: 'money',
-            title: 'إجمالي المبيعات',
-            value: 'ج${(stats.totalSales ?? 0).toStringAsFixed(0)}',
-            change: '+${(stats.growth ?? 0).toStringAsFixed(1)}%',
-            changeIsPositive: (stats.growth ?? 0) >= 0,
-          ),
-          data.DashboardStat(
-            icon: 'cart',
-            title: 'عدد الطلبات',
-            value: '${stats.totalOrders ?? 0}',
-            change: '+12.5%',
-            changeIsPositive: true,
-          ),
-          data.DashboardStat(
-            icon: 'users',
-            title: 'عدد العملاء',
-            value: '${stats.totalCustomers ?? 0}',
-            change: '+8.2%',
-            changeIsPositive: true,
-          ),
-          data.DashboardStat(
-            icon: 'inventory',
-            title: 'عدد المنتجات',
-            value: '${stats.totalProducts ?? 0}',
-            change: '+5.1%',
-            changeIsPositive: true,
-          ),
-        ];
-
-        final chunks = List.generate(
-          (dashboardStats.length / 2).ceil(),
-          (index) => dashboardStats.skip(index * 2).take(2).toList(),
-        );
-
-        return Column(
-          children: [
-            for (final row in chunks) ...[
-              Row(
-                children: [
-                  for (final stat in row) ...[
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.all(AppSpacing.sm),
-                        child: AppCard(
-                          child: _StatTile(stat: stat),
-                        ),
-                      ),
+    return Column(
+      children: [
+        for (final row in chunks) ...[
+          Row(
+            children: [
+              for (final stat in row) ...[
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.sm),
+                    child: AppCard(
+                      child: _StatTile(stat: stat),
                     ),
-                  ],
-                  if (row.length == 1)
-                    const Expanded(
-                      child: SizedBox.shrink(),
-                    ),
-                ],
-              ),
+                  ),
+                ),
+              ],
+              if (row.length == 1)
+                const Expanded(
+                  child: SizedBox.shrink(),
+                ),
             ],
-          ],
-        );
-      },
+          ),
+        ],
+      ],
     );
   }
 
-  Widget _buildSalesChart(BuildContext context) {
-    final series = switch (_period) {
-      SalesPeriod.daily => data.dailySales,
-      SalesPeriod.weekly => data.weeklySales,
-      SalesPeriod.monthly => data.monthlySales,
-    };
+  Widget _buildSalesChart(
+    BuildContext context, {
+    required List<DashboardSalesPoint> sales,
+    required DashboardSalesPeriod period,
+    required bool isLoading,
+  }) {
+    final series = sales.isEmpty
+        ? const [
+            DashboardSalesPoint(label: 'لا توجد بيانات', sales: 0, orders: 0),
+          ]
+        : sales;
+    final maxSales = series
+        .map((e) => e.sales)
+        .fold<double>(0, (prev, value) => value > prev ? value : prev);
+    final maxOrders = series
+        .map((e) => e.orders.toDouble())
+        .fold<double>(0, (prev, value) => value > prev ? value : prev);
+    final orderScale = maxOrders == 0 ? 1 : maxSales / maxOrders;
 
     return AppCard(
       child: Column(
@@ -208,121 +219,134 @@ class _DashboardPageState extends State<DashboardPage> {
             title: 'تطور المبيعات',
             trailing: ToggleButtons(
               borderRadius: BorderRadius.circular(AppRadius.md),
-              isSelected: SalesPeriod.values.map((e) => e == _period).toList(),
+              isSelected:
+                  DashboardSalesPeriod.values.map((e) => e == period).toList(),
               onPressed: (index) {
-                setState(() => _period = SalesPeriod.values[index]);
+                context
+                    .read<DashboardCubit>()
+                    .changePeriod(DashboardSalesPeriod.values[index]);
               },
-              children: const [
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                  child: Text('يومي'),
-                ),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                  child: Text('أسبوعي'),
-                ),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                  child: Text('شهري'),
-                ),
+              children: [
+                for (final filter in DashboardSalesPeriod.values)
+                  Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                    child: Text(filter.displayLabel),
+                  ),
               ],
             ),
           ),
           const SizedBox(height: AppSpacing.md),
           SizedBox(
             height: 260,
-            child: LineChart(
-              LineChartData(
-                backgroundColor: Colors.transparent,
-                gridData: FlGridData(
-                  show: true,
-                  horizontalInterval: 2000,
-                  getDrawingHorizontalLine: (value) => const FlLine(
-                    color: AppColors.border,
-                    strokeWidth: 1,
-                  ),
-                  drawVerticalLine: false,
-                ),
-                titlesData: FlTitlesData(
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 32,
-                      getTitlesWidget: (value, meta) {
-                        final index = value.toInt();
-                        if (index < 0 || index >= series.length) {
-                          return const SizedBox.shrink();
-                        }
-                        return Padding(
-                          padding: const EdgeInsets.only(top: AppSpacing.sm),
-                          child: Text(
-                            series[index].label,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(color: AppColors.mutedForeground),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 42,
-                      getTitlesWidget: (value, meta) {
-                        if (value % 4000 != 0) return const SizedBox.shrink();
-                        return Text(
-                          value.toInt().toString(),
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
-                              ?.copyWith(color: AppColors.mutedForeground),
-                        );
-                      },
-                    ),
-                  ),
-                  rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false)),
-                  topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false)),
-                ),
-                borderData: FlBorderData(show: false),
-                minX: 0,
-                maxX: (series.length - 1).toDouble(),
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: [
-                      for (var i = 0; i < series.length; i++)
-                        FlSpot(i.toDouble(), series[i].sales),
-                    ],
-                    isCurved: true,
-                    color: AppColors.primary,
-                    barWidth: 3,
-                    dotData: FlDotData(
+            child: Stack(
+              children: [
+                LineChart(
+                  LineChartData(
+                    backgroundColor: Colors.transparent,
+                    gridData: FlGridData(
                       show: true,
-                      getDotPainter: (spot, percent, bar, index) {
-                        return FlDotCirclePainter(
-                          radius: 4,
-                          color: AppColors.primary,
-                          strokeColor: Colors.white,
-                          strokeWidth: 2,
-                        );
-                      },
+                      horizontalInterval: _suggestedInterval(series),
+                      getDrawingHorizontalLine: (value) => const FlLine(
+                        color: AppColors.border,
+                        strokeWidth: 1,
+                      ),
+                      drawVerticalLine: false,
                     ),
-                  ),
-                  LineChartBarData(
-                    spots: [
-                      for (var i = 0; i < series.length; i++)
-                        FlSpot(i.toDouble(), series[i].orders.toDouble() * 400),
+                    titlesData: FlTitlesData(
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 32,
+                          getTitlesWidget: (value, meta) {
+                            final index = value.toInt();
+                            if (index < 0 || index >= series.length) {
+                              return const SizedBox.shrink();
+                            }
+                            return Padding(
+                              padding:
+                                  const EdgeInsets.only(top: AppSpacing.sm),
+                              child: Text(
+                                series[index].label,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(
+                                        color: AppColors.mutedForeground),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 42,
+                          getTitlesWidget: (value, meta) {
+                            if (value % _suggestedInterval(series) != 0) {
+                              return const SizedBox.shrink();
+                            }
+                            return Text(
+                              value.toInt().toString(),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(color: AppColors.mutedForeground),
+                            );
+                          },
+                        ),
+                      ),
+                      rightTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false)),
+                      topTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false)),
+                    ),
+                    borderData: FlBorderData(show: false),
+                    minX: 0,
+                    maxX: (series.length - 1).toDouble(),
+                    lineBarsData: [
+                      LineChartBarData(
+                        spots: [
+                          for (var i = 0; i < series.length; i++)
+                            FlSpot(i.toDouble(), series[i].sales),
+                        ],
+                        isCurved: true,
+                        color: AppColors.primary,
+                        barWidth: 3,
+                        dotData: FlDotData(
+                          show: true,
+                          getDotPainter: (spot, percent, bar, index) {
+                            return FlDotCirclePainter(
+                              radius: 4,
+                              color: AppColors.primary,
+                              strokeColor: Colors.white,
+                              strokeWidth: 2,
+                            );
+                          },
+                        ),
+                      ),
+                      LineChartBarData(
+                        spots: [
+                          for (var i = 0; i < series.length; i++)
+                            FlSpot(
+                              i.toDouble(),
+                              series[i].orders.toDouble() * orderScale,
+                            ),
+                        ],
+                        isCurved: true,
+                        color: AppColors.chartBlue,
+                        barWidth: 2,
+                        dotData: const FlDotData(show: false),
+                      ),
                     ],
-                    isCurved: true,
-                    color: AppColors.chartBlue,
-                    barWidth: 2,
-                    dotData: const FlDotData(show: false),
                   ),
-                ],
-              ),
+                ),
+                if (isLoading)
+                  Container(
+                    color: AppColors.surface.withOpacity(0.7),
+                    child: const Center(child: CircularProgressIndicator()),
+                  ),
+              ],
             ),
           ),
         ],
@@ -330,8 +354,13 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildTopProducts() {
-    final topProducts = data.products.take(3).toList();
+  Widget _buildTopProducts(List<DashboardTopProduct> topProducts) {
+    if (topProducts.isEmpty) {
+      return const _EmptySection(
+        title: 'أفضل المنتجات أداءً',
+        message: 'لا توجد بيانات منتجات مميزة حتى الآن.',
+      );
+    }
 
     return AppCard(
       child: Column(
@@ -347,11 +376,19 @@ class _DashboardPageState extends State<DashboardPage> {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(AppRadius.md),
-                  child: Image.asset(
-                    product.image,
+                  child: SizedBox(
                     width: 56,
                     height: 56,
-                    fit: BoxFit.cover,
+                    child: product.image != null && product.image!.isNotEmpty
+                        ? FadeInImage.assetNetwork(
+                            placeholder: 'assets/images/placeholder.jpg',
+                            image: product.image!,
+                            fit: BoxFit.cover,
+                          )
+                        : Image.asset(
+                            'assets/images/placeholder.jpg',
+                            fit: BoxFit.cover,
+                          ),
                   ),
                 ),
                 const SizedBox(width: AppSpacing.md),
@@ -373,7 +410,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                 ),
                 Text(
-                  '${product.price.toStringAsFixed(0)} ج',
+                  _currencyFormatter.format(product.price),
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
               ],
@@ -389,7 +426,14 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildTrafficSources() {
+  Widget _buildTrafficSources(List<DashboardTrafficSourceEntry> sources) {
+    if (sources.isEmpty) {
+      return const _EmptySection(
+        title: 'مصادر الزيارات',
+        message: 'لا توجد بيانات زيارات في الفترة الحالية.',
+      );
+    }
+
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -399,7 +443,7 @@ class _DashboardPageState extends State<DashboardPage> {
             subtitle: 'أهم القنوات التي تجلب العملاء',
           ),
           const SizedBox(height: AppSpacing.md),
-          for (final source in data.trafficSources) ...[
+          for (final source in sources) ...[
             Padding(
               padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
               child: Column(
@@ -411,7 +455,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   Row(
                     children: [
                       Expanded(
-                        flex: source.percentage.round(),
+                        flex: source.percentage.round().clamp(0, 100).toInt(),
                         child: Container(
                           height: 6,
                           decoration: BoxDecoration(
@@ -421,7 +465,9 @@ class _DashboardPageState extends State<DashboardPage> {
                         ),
                       ),
                       Expanded(
-                        flex: 100 - source.percentage.round(),
+                        flex: (100 - source.percentage.round())
+                            .clamp(0, 100)
+                            .toInt(),
                         child: Container(
                           height: 6,
                           decoration: BoxDecoration(
@@ -447,7 +493,14 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildRecentActivity() {
+  Widget _buildRecentActivity(List<DashboardActivityEntry> activities) {
+    if (activities.isEmpty) {
+      return const _EmptySection(
+        title: 'النشاط الأخير',
+        message: 'لا توجد أنشطة حديثة.',
+      );
+    }
+
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -457,7 +510,7 @@ class _DashboardPageState extends State<DashboardPage> {
             subtitle: 'آخر التحديثات في متجرك',
           ),
           const SizedBox(height: AppSpacing.md),
-          for (final activity in data.recentActivities) ...[
+          for (final activity in activities) ...[
             Container(
               margin: const EdgeInsets.only(bottom: AppSpacing.md),
               padding: const EdgeInsets.all(AppSpacing.md),
@@ -552,7 +605,7 @@ class _DashboardPageState extends State<DashboardPage> {
 class _StatTile extends StatelessWidget {
   const _StatTile({required this.stat});
 
-  final data.DashboardStat stat;
+  final _StatTileData stat;
 
   @override
   Widget build(BuildContext context) {
@@ -604,26 +657,90 @@ class _StatTile extends StatelessWidget {
               ),
         ),
         const SizedBox(height: AppSpacing.xs),
-        Row(
-          children: [
-            Icon(
-              stat.changeIsPositive ? Icons.trending_up : Icons.trending_down,
-              size: 16,
-              color:
-                  stat.changeIsPositive ? AppColors.success : AppColors.danger,
-            ),
-            const SizedBox(width: AppSpacing.xs),
-            Text(
-              stat.change,
-              style: TextStyle(
+        if (stat.change.isNotEmpty)
+          Row(
+            children: [
+              Icon(
+                stat.changeIsPositive ? Icons.trending_up : Icons.trending_down,
+                size: 16,
                 color: stat.changeIsPositive
                     ? AppColors.success
                     : AppColors.danger,
               ),
-            ),
-          ],
-        ),
+              const SizedBox(width: AppSpacing.xs),
+              Text(
+                stat.change,
+                style: TextStyle(
+                  color: stat.changeIsPositive
+                      ? AppColors.success
+                      : AppColors.danger,
+                ),
+              ),
+            ],
+          ),
       ],
     );
   }
+}
+
+class _StatTileData {
+  const _StatTileData({
+    required this.title,
+    required this.value,
+    required this.change,
+    required this.changeIsPositive,
+    required this.icon,
+  });
+
+  final String title;
+  final String value;
+  final String change;
+  final bool changeIsPositive;
+  final String icon;
+}
+
+class _EmptySection extends StatelessWidget {
+  const _EmptySection({required this.title, required this.message});
+
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SectionHeader(title: title),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            message,
+            style: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(color: AppColors.mutedForeground),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+double _suggestedInterval(List<DashboardSalesPoint> series) {
+  if (series.isEmpty) return 1000;
+  final maxValue = series
+      .map((e) => e.sales)
+      .fold<double>(0, (prev, value) => value > prev ? value : prev);
+  if (maxValue <= 1000) return 200;
+  if (maxValue <= 5000) return 500;
+  if (maxValue <= 10000) return 1000;
+  if (maxValue <= 20000) return 2000;
+  if (maxValue <= 50000) return 5000;
+  return 10000;
+}
+
+String _formatChange(double? value) {
+  final change = value ?? 0;
+  final sign = change > 0 ? '+' : '';
+  return '$sign${change.toStringAsFixed(1)}%';
 }

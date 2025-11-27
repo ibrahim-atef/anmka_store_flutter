@@ -20,7 +20,15 @@ mixin _$DashboardState {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
-    required TResult Function(DashboardStatsResponse stats) loaded,
+    required TResult Function(
+            DashboardStatsResponse stats,
+            List<DashboardSalesPoint> sales,
+            DashboardSalesPeriod period,
+            List<DashboardTopProduct> topProducts,
+            List<DashboardTrafficSourceEntry> trafficSources,
+            List<DashboardActivityEntry> activities,
+            bool isSalesLoading)
+        loaded,
     required TResult Function(String message) error,
   }) =>
       throw _privateConstructorUsedError;
@@ -28,7 +36,15 @@ mixin _$DashboardState {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
-    TResult? Function(DashboardStatsResponse stats)? loaded,
+    TResult? Function(
+            DashboardStatsResponse stats,
+            List<DashboardSalesPoint> sales,
+            DashboardSalesPeriod period,
+            List<DashboardTopProduct> topProducts,
+            List<DashboardTrafficSourceEntry> trafficSources,
+            List<DashboardActivityEntry> activities,
+            bool isSalesLoading)?
+        loaded,
     TResult? Function(String message)? error,
   }) =>
       throw _privateConstructorUsedError;
@@ -36,7 +52,15 @@ mixin _$DashboardState {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
-    TResult Function(DashboardStatsResponse stats)? loaded,
+    TResult Function(
+            DashboardStatsResponse stats,
+            List<DashboardSalesPoint> sales,
+            DashboardSalesPeriod period,
+            List<DashboardTopProduct> topProducts,
+            List<DashboardTrafficSourceEntry> trafficSources,
+            List<DashboardActivityEntry> activities,
+            bool isSalesLoading)?
+        loaded,
     TResult Function(String message)? error,
     required TResult orElse(),
   }) =>
@@ -126,7 +150,15 @@ class _$InitialImpl implements _Initial {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
-    required TResult Function(DashboardStatsResponse stats) loaded,
+    required TResult Function(
+            DashboardStatsResponse stats,
+            List<DashboardSalesPoint> sales,
+            DashboardSalesPeriod period,
+            List<DashboardTopProduct> topProducts,
+            List<DashboardTrafficSourceEntry> trafficSources,
+            List<DashboardActivityEntry> activities,
+            bool isSalesLoading)
+        loaded,
     required TResult Function(String message) error,
   }) {
     return initial();
@@ -137,7 +169,15 @@ class _$InitialImpl implements _Initial {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
-    TResult? Function(DashboardStatsResponse stats)? loaded,
+    TResult? Function(
+            DashboardStatsResponse stats,
+            List<DashboardSalesPoint> sales,
+            DashboardSalesPeriod period,
+            List<DashboardTopProduct> topProducts,
+            List<DashboardTrafficSourceEntry> trafficSources,
+            List<DashboardActivityEntry> activities,
+            bool isSalesLoading)?
+        loaded,
     TResult? Function(String message)? error,
   }) {
     return initial?.call();
@@ -148,7 +188,15 @@ class _$InitialImpl implements _Initial {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
-    TResult Function(DashboardStatsResponse stats)? loaded,
+    TResult Function(
+            DashboardStatsResponse stats,
+            List<DashboardSalesPoint> sales,
+            DashboardSalesPeriod period,
+            List<DashboardTopProduct> topProducts,
+            List<DashboardTrafficSourceEntry> trafficSources,
+            List<DashboardActivityEntry> activities,
+            bool isSalesLoading)?
+        loaded,
     TResult Function(String message)? error,
     required TResult orElse(),
   }) {
@@ -240,7 +288,15 @@ class _$LoadingImpl implements _Loading {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
-    required TResult Function(DashboardStatsResponse stats) loaded,
+    required TResult Function(
+            DashboardStatsResponse stats,
+            List<DashboardSalesPoint> sales,
+            DashboardSalesPeriod period,
+            List<DashboardTopProduct> topProducts,
+            List<DashboardTrafficSourceEntry> trafficSources,
+            List<DashboardActivityEntry> activities,
+            bool isSalesLoading)
+        loaded,
     required TResult Function(String message) error,
   }) {
     return loading();
@@ -251,7 +307,15 @@ class _$LoadingImpl implements _Loading {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
-    TResult? Function(DashboardStatsResponse stats)? loaded,
+    TResult? Function(
+            DashboardStatsResponse stats,
+            List<DashboardSalesPoint> sales,
+            DashboardSalesPeriod period,
+            List<DashboardTopProduct> topProducts,
+            List<DashboardTrafficSourceEntry> trafficSources,
+            List<DashboardActivityEntry> activities,
+            bool isSalesLoading)?
+        loaded,
     TResult? Function(String message)? error,
   }) {
     return loading?.call();
@@ -262,7 +326,15 @@ class _$LoadingImpl implements _Loading {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
-    TResult Function(DashboardStatsResponse stats)? loaded,
+    TResult Function(
+            DashboardStatsResponse stats,
+            List<DashboardSalesPoint> sales,
+            DashboardSalesPeriod period,
+            List<DashboardTopProduct> topProducts,
+            List<DashboardTrafficSourceEntry> trafficSources,
+            List<DashboardActivityEntry> activities,
+            bool isSalesLoading)?
+        loaded,
     TResult Function(String message)? error,
     required TResult orElse(),
   }) {
@@ -320,7 +392,14 @@ abstract class _$$LoadedImplCopyWith<$Res> {
           _$LoadedImpl value, $Res Function(_$LoadedImpl) then) =
       __$$LoadedImplCopyWithImpl<$Res>;
   @useResult
-  $Res call({DashboardStatsResponse stats});
+  $Res call(
+      {DashboardStatsResponse stats,
+      List<DashboardSalesPoint> sales,
+      DashboardSalesPeriod period,
+      List<DashboardTopProduct> topProducts,
+      List<DashboardTrafficSourceEntry> trafficSources,
+      List<DashboardActivityEntry> activities,
+      bool isSalesLoading});
 }
 
 /// @nodoc
@@ -335,12 +414,42 @@ class __$$LoadedImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? stats = null,
+    Object? sales = null,
+    Object? period = null,
+    Object? topProducts = null,
+    Object? trafficSources = null,
+    Object? activities = null,
+    Object? isSalesLoading = null,
   }) {
     return _then(_$LoadedImpl(
-      null == stats
+      stats: null == stats
           ? _value.stats
           : stats // ignore: cast_nullable_to_non_nullable
               as DashboardStatsResponse,
+      sales: null == sales
+          ? _value._sales
+          : sales // ignore: cast_nullable_to_non_nullable
+              as List<DashboardSalesPoint>,
+      period: null == period
+          ? _value.period
+          : period // ignore: cast_nullable_to_non_nullable
+              as DashboardSalesPeriod,
+      topProducts: null == topProducts
+          ? _value._topProducts
+          : topProducts // ignore: cast_nullable_to_non_nullable
+              as List<DashboardTopProduct>,
+      trafficSources: null == trafficSources
+          ? _value._trafficSources
+          : trafficSources // ignore: cast_nullable_to_non_nullable
+              as List<DashboardTrafficSourceEntry>,
+      activities: null == activities
+          ? _value._activities
+          : activities // ignore: cast_nullable_to_non_nullable
+              as List<DashboardActivityEntry>,
+      isSalesLoading: null == isSalesLoading
+          ? _value.isSalesLoading
+          : isSalesLoading // ignore: cast_nullable_to_non_nullable
+              as bool,
     ));
   }
 }
@@ -348,14 +457,62 @@ class __$$LoadedImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$LoadedImpl implements _Loaded {
-  const _$LoadedImpl(this.stats);
+  const _$LoadedImpl(
+      {required this.stats,
+      required final List<DashboardSalesPoint> sales,
+      required this.period,
+      required final List<DashboardTopProduct> topProducts,
+      required final List<DashboardTrafficSourceEntry> trafficSources,
+      required final List<DashboardActivityEntry> activities,
+      this.isSalesLoading = false})
+      : _sales = sales,
+        _topProducts = topProducts,
+        _trafficSources = trafficSources,
+        _activities = activities;
 
   @override
   final DashboardStatsResponse stats;
+  final List<DashboardSalesPoint> _sales;
+  @override
+  List<DashboardSalesPoint> get sales {
+    if (_sales is EqualUnmodifiableListView) return _sales;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_sales);
+  }
+
+  @override
+  final DashboardSalesPeriod period;
+  final List<DashboardTopProduct> _topProducts;
+  @override
+  List<DashboardTopProduct> get topProducts {
+    if (_topProducts is EqualUnmodifiableListView) return _topProducts;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_topProducts);
+  }
+
+  final List<DashboardTrafficSourceEntry> _trafficSources;
+  @override
+  List<DashboardTrafficSourceEntry> get trafficSources {
+    if (_trafficSources is EqualUnmodifiableListView) return _trafficSources;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_trafficSources);
+  }
+
+  final List<DashboardActivityEntry> _activities;
+  @override
+  List<DashboardActivityEntry> get activities {
+    if (_activities is EqualUnmodifiableListView) return _activities;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_activities);
+  }
+
+  @override
+  @JsonKey()
+  final bool isSalesLoading;
 
   @override
   String toString() {
-    return 'DashboardState.loaded(stats: $stats)';
+    return 'DashboardState.loaded(stats: $stats, sales: $sales, period: $period, topProducts: $topProducts, trafficSources: $trafficSources, activities: $activities, isSalesLoading: $isSalesLoading)';
   }
 
   @override
@@ -363,11 +520,29 @@ class _$LoadedImpl implements _Loaded {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$LoadedImpl &&
-            (identical(other.stats, stats) || other.stats == stats));
+            (identical(other.stats, stats) || other.stats == stats) &&
+            const DeepCollectionEquality().equals(other._sales, _sales) &&
+            (identical(other.period, period) || other.period == period) &&
+            const DeepCollectionEquality()
+                .equals(other._topProducts, _topProducts) &&
+            const DeepCollectionEquality()
+                .equals(other._trafficSources, _trafficSources) &&
+            const DeepCollectionEquality()
+                .equals(other._activities, _activities) &&
+            (identical(other.isSalesLoading, isSalesLoading) ||
+                other.isSalesLoading == isSalesLoading));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, stats);
+  int get hashCode => Object.hash(
+      runtimeType,
+      stats,
+      const DeepCollectionEquality().hash(_sales),
+      period,
+      const DeepCollectionEquality().hash(_topProducts),
+      const DeepCollectionEquality().hash(_trafficSources),
+      const DeepCollectionEquality().hash(_activities),
+      isSalesLoading);
 
   @JsonKey(ignore: true)
   @override
@@ -380,10 +555,19 @@ class _$LoadedImpl implements _Loaded {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
-    required TResult Function(DashboardStatsResponse stats) loaded,
+    required TResult Function(
+            DashboardStatsResponse stats,
+            List<DashboardSalesPoint> sales,
+            DashboardSalesPeriod period,
+            List<DashboardTopProduct> topProducts,
+            List<DashboardTrafficSourceEntry> trafficSources,
+            List<DashboardActivityEntry> activities,
+            bool isSalesLoading)
+        loaded,
     required TResult Function(String message) error,
   }) {
-    return loaded(stats);
+    return loaded(stats, sales, period, topProducts, trafficSources, activities,
+        isSalesLoading);
   }
 
   @override
@@ -391,10 +575,19 @@ class _$LoadedImpl implements _Loaded {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
-    TResult? Function(DashboardStatsResponse stats)? loaded,
+    TResult? Function(
+            DashboardStatsResponse stats,
+            List<DashboardSalesPoint> sales,
+            DashboardSalesPeriod period,
+            List<DashboardTopProduct> topProducts,
+            List<DashboardTrafficSourceEntry> trafficSources,
+            List<DashboardActivityEntry> activities,
+            bool isSalesLoading)?
+        loaded,
     TResult? Function(String message)? error,
   }) {
-    return loaded?.call(stats);
+    return loaded?.call(stats, sales, period, topProducts, trafficSources,
+        activities, isSalesLoading);
   }
 
   @override
@@ -402,12 +595,21 @@ class _$LoadedImpl implements _Loaded {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
-    TResult Function(DashboardStatsResponse stats)? loaded,
+    TResult Function(
+            DashboardStatsResponse stats,
+            List<DashboardSalesPoint> sales,
+            DashboardSalesPeriod period,
+            List<DashboardTopProduct> topProducts,
+            List<DashboardTrafficSourceEntry> trafficSources,
+            List<DashboardActivityEntry> activities,
+            bool isSalesLoading)?
+        loaded,
     TResult Function(String message)? error,
     required TResult orElse(),
   }) {
     if (loaded != null) {
-      return loaded(stats);
+      return loaded(stats, sales, period, topProducts, trafficSources,
+          activities, isSalesLoading);
     }
     return orElse();
   }
@@ -451,9 +653,22 @@ class _$LoadedImpl implements _Loaded {
 }
 
 abstract class _Loaded implements DashboardState {
-  const factory _Loaded(final DashboardStatsResponse stats) = _$LoadedImpl;
+  const factory _Loaded(
+      {required final DashboardStatsResponse stats,
+      required final List<DashboardSalesPoint> sales,
+      required final DashboardSalesPeriod period,
+      required final List<DashboardTopProduct> topProducts,
+      required final List<DashboardTrafficSourceEntry> trafficSources,
+      required final List<DashboardActivityEntry> activities,
+      final bool isSalesLoading}) = _$LoadedImpl;
 
   DashboardStatsResponse get stats;
+  List<DashboardSalesPoint> get sales;
+  DashboardSalesPeriod get period;
+  List<DashboardTopProduct> get topProducts;
+  List<DashboardTrafficSourceEntry> get trafficSources;
+  List<DashboardActivityEntry> get activities;
+  bool get isSalesLoading;
   @JsonKey(ignore: true)
   _$$LoadedImplCopyWith<_$LoadedImpl> get copyWith =>
       throw _privateConstructorUsedError;
@@ -525,7 +740,15 @@ class _$ErrorImpl implements _Error {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
-    required TResult Function(DashboardStatsResponse stats) loaded,
+    required TResult Function(
+            DashboardStatsResponse stats,
+            List<DashboardSalesPoint> sales,
+            DashboardSalesPeriod period,
+            List<DashboardTopProduct> topProducts,
+            List<DashboardTrafficSourceEntry> trafficSources,
+            List<DashboardActivityEntry> activities,
+            bool isSalesLoading)
+        loaded,
     required TResult Function(String message) error,
   }) {
     return error(message);
@@ -536,7 +759,15 @@ class _$ErrorImpl implements _Error {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
-    TResult? Function(DashboardStatsResponse stats)? loaded,
+    TResult? Function(
+            DashboardStatsResponse stats,
+            List<DashboardSalesPoint> sales,
+            DashboardSalesPeriod period,
+            List<DashboardTopProduct> topProducts,
+            List<DashboardTrafficSourceEntry> trafficSources,
+            List<DashboardActivityEntry> activities,
+            bool isSalesLoading)?
+        loaded,
     TResult? Function(String message)? error,
   }) {
     return error?.call(message);
@@ -547,7 +778,15 @@ class _$ErrorImpl implements _Error {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
-    TResult Function(DashboardStatsResponse stats)? loaded,
+    TResult Function(
+            DashboardStatsResponse stats,
+            List<DashboardSalesPoint> sales,
+            DashboardSalesPeriod period,
+            List<DashboardTopProduct> topProducts,
+            List<DashboardTrafficSourceEntry> trafficSources,
+            List<DashboardActivityEntry> activities,
+            bool isSalesLoading)?
+        loaded,
     TResult Function(String message)? error,
     required TResult orElse(),
   }) {

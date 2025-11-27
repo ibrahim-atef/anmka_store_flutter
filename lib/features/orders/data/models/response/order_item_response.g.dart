@@ -8,7 +8,7 @@ part of 'order_item_response.dart';
 
 OrderItemResponse _$OrderItemResponseFromJson(Map<String, dynamic> json) =>
     OrderItemResponse(
-      productId: json['productId'] as int?,
+      productId: (json['productId'] as num?)?.toInt(),
       name: json['name'] as String?,
       quantity: (json['quantity'] as num).toInt(),
       price: (json['price'] as num).toDouble(),

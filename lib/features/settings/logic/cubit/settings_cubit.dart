@@ -62,7 +62,23 @@ class SettingsCubit extends Cubit<SettingsState> {
 
   Future<void> updateNotificationSettings(
       UpdateNotificationSettingsRequest request) async {
-    final result = await _repository.updateNotificationSettings(request);
+    final currentSettings = state.maybeWhen(
+      loaded: (_, notificationSettings, __) => notificationSettings,
+      orElse: () => null,
+    );
+
+    final mergedRequest = currentSettings == null
+        ? request
+        : UpdateNotificationSettingsRequest(
+            notificationsEnabled: request.notificationsEnabled ??
+                currentSettings.notificationsEnabled,
+            twoFactorEnabled:
+                request.twoFactorEnabled ?? currentSettings.twoFactorEnabled,
+            autoSyncEnabled:
+                request.autoSyncEnabled ?? currentSettings.autoSyncEnabled,
+          );
+
+    final result = await _repository.updateNotificationSettings(mergedRequest);
 
     result.when(
       success: (_) {

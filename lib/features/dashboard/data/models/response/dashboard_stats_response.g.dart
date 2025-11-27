@@ -15,6 +15,13 @@ DashboardStatsResponse _$DashboardStatsResponseFromJson(
       totalCustomers: (json['totalCustomers'] as num?)?.toInt(),
       revenue: (json['revenue'] as num?)?.toDouble(),
       growth: (json['growth'] as num?)?.toDouble(),
+      newOrders: (json['newOrders'] as num?)?.toInt(),
+      newCustomers: (json['newCustomers'] as num?)?.toInt(),
+      outOfStockProducts: (json['outOfStockProducts'] as num?)?.toInt(),
+      todayVisits: (json['todayVisits'] as num?)?.toInt(),
+      salesChange: (json['salesChange'] as num?)?.toDouble(),
+      ordersChange: (json['ordersChange'] as num?)?.toDouble(),
+      customersChange: (json['customersChange'] as num?)?.toDouble(),
     );
 
 Map<String, dynamic> _$DashboardStatsResponseToJson(
@@ -26,4 +33,11 @@ Map<String, dynamic> _$DashboardStatsResponseToJson(
       'totalCustomers': instance.totalCustomers,
       'revenue': instance.revenue,
       'growth': instance.growth,
+      'newOrders': instance.newOrders,
+      'newCustomers': instance.newCustomers,
+      'outOfStockProducts': instance.outOfStockProducts,
+      'todayVisits': instance.todayVisits,
+      'salesChange': instance.salesChange,
+      'ordersChange': instance.ordersChange,
+      'customersChange': instance.customersChange,
     };

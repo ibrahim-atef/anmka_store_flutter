@@ -8,7 +8,7 @@ part of 'order_response.dart';
 
 OrderResponse _$OrderResponseFromJson(Map<String, dynamic> json) =>
     OrderResponse(
-      id: json['id'].toString(),
+      id: json['id'] as String,
       customerName: json['customerName'] as String,
       customerId: json['customerId'] as String?,
       customerEmail: json['customerEmail'] as String?,
