@@ -46,3 +46,11 @@ class AnmkaStoreApp extends StatelessWidget {
     );
   }
 }
+
+
+
+// {
+//     "username": "admin",
+//     "password": "password",
+//     "website": "https://demo1.anmka.com"
+// }
